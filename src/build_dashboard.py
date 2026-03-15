@@ -21,7 +21,7 @@ KWH_PRICE = 0.22
 @st.cache_data
 def load_and_merge(filter=None):
     all_merged = []
-    base_path = "~/llm-energy-tests/logs/" 
+    base_path = "~/git/llm-energy-tests/logs/" 
     log_dir = os.path.expanduser(base_path + (filter if filter else ""))
 
     energy_files = glob.glob(f"{log_dir}/energy_*.csv")
