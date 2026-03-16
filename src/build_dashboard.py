@@ -12,11 +12,15 @@ st.title("🌡️ LLM Aging & Thermal Correlation")
 # --- Configuration & Arguments ---
 parser = argparse.ArgumentParser()
 parser.add_argument('--date_filter', default=None, help='Filter by date (e.g., 20260311)')
+parser.add_argument('-c', '--clear_cache', action='store_true', default=True, help='Force to clear the cache when the date filter changes to ensure fresh data loading. Use this flag when you want to see the latest data after changing the date filter.')
+# Electricity price (Portugal average approx €0.22/kWh)
+parser.add_argument('--kwh_price', type=float, default=0.22, help='Electricity price per kWh (default: 0.22 EUR)')
 args, _ = parser.parse_known_args()
 date_filter = args.date_filter
+KWH_PRICE = args.kwh_price
 
-# Electricity price (Portugal average approx €0.22/kWh)
-KWH_PRICE = 0.22 
+if args.clear_cache:
+    st.cache_data.clear()  # Clear cache on each run to ensure fresh data loading
 
 @st.cache_data
 def load_and_merge(filter=None):
