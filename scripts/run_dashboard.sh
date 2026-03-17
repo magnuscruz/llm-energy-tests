@@ -5,6 +5,10 @@
 #   ./run_dashboard.sh [optional_date_filter]
 # Example:
 #   ./run_dashboard.sh 20240601
+
+# Activate the virtual environment
+source ./.venv/bin/activate
+
 # Check if a date filter argument is provided
 if [ "$1" ]; then
     echo "Running dashboard with date filter: $1"

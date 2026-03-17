@@ -4,6 +4,7 @@ import plotly.express as px
 import glob
 import os
 import plotly.io as pio
+import numpy as np
 
 # --- Page Config ---
 st.set_page_config(layout="wide", page_title="FCTUC-DEI: LLM Sustainability Lab")
@@ -59,16 +60,25 @@ def load_research_data(date_folder):
             m = pd.merge(m, df_phys, on='Time')
             
             m['Model'] = os.path.basename(inf_file).split('_')[0]
-            m['Leakage_Delta'] = m['Watts'] - m['Watts_RAPL']
-            m['TPJ'] = m['TPS'] / m['Watts']
+            # Handle column name discrepancy if 'Watts' is 'Watts_Physical' in your CSV
+            p_col = 'Watts_Physical' if 'Watts_Physical' in m.columns else 'Watts'
+            m['Leakage_Delta'] = m[p_col] - m['Watts_RAPL']
+            m['TPJ'] = m['TPS'] / m[p_col]
             
             all_data.append(m)
             
-    return pd.concat(all_data) if all_data else pd.DataFrame()
+    if not all_data:
+        return pd.DataFrame()
+
+    combined_df = pd.concat(all_data)
+    # Reset index for each model group so they all start at 0 for the X-axis
+    combined_df['Relative_Cycle'] = combined_df.groupby('Model').cumcount()
+    
+    return combined_df
 
 def save_for_latex(fig, name):
     """Applies IEEE styling and exports vector graphics"""
-    fig_export = pio.from_json(fig.to_json()) # Create a copy to avoid changing UI
+    fig_export = pio.from_json(fig.to_json())
     fig_export.update_layout(
         font_family="Times New Roman",
         font_size=12,
@@ -106,12 +116,19 @@ if not df.empty:
 
     with c2:
         st.subheader("📉 Performance Decay (Software Aging)")
-        df['Cycle'] = range(len(df))
-        fig_aging = px.line(df, x='Cycle', y='TPS', color='Model')
+        # Use Relative_Cycle instead of a global range index
+        fig_aging = px.line(df, x='Relative_Cycle', y='TPS', color='Model',
+                           labels={'Relative_Cycle': 'Cycle Index', 'TPS': 'Tokens Per Second'})
         st.plotly_chart(fig_aging, use_container_width=True)
 
     st.subheader("🔗 Feature Correlation")
-    corr = df[['Temp', 'TPS', 'Watts', 'Leakage_Delta', 'RAM_MB']].corr()
+    # Identify available numeric columns for correlation
+    numeric_cols = ['Temp', 'TPS', 'Leakage_Delta', 'RAM_MB']
+    # Check if 'Watts' or 'Watts_Physical' exists to avoid KeyError
+    w_col = 'Watts_Physical' if 'Watts_Physical' in df.columns else 'Watts'
+    if w_col in df.columns: numeric_cols.append(w_col)
+    
+    corr = df[numeric_cols].corr()
     fig_corr = px.imshow(corr, text_auto=True, color_continuous_scale='RdBu_r')
     st.plotly_chart(fig_corr, use_container_width=True)
 
