@@ -1,12 +1,12 @@
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
-# 1. Your REAL Dashboard Data (Immediate Onset)
+# 1. Your REAL Dashboard Data (Immediate Onset + 16-Hour Deep Aging)
+# Data extracted from corr_10min, corr_30min, corr_60min, corr_120min, and corr_16hs
 data = {
-    'Time': ['10 Min', '30 Min', '60 Min', '120 Min'],
-    'Corr_TPS': [-0.631, -0.615, -0.583, -0.523],
-    'Corr_Leakage': [0.520, 0.594, 0.580, 0.501]
+    'Time': ['10 Min', '30 Min', '60 Min', '120 Min', '16 Hrs'],
+    'Corr_TPS': [-0.631, -0.615, -0.583, -0.523, -0.427],
+    'Corr_Leakage': [0.520, 0.594, 0.580, 0.501, 0.451]
 }
 df = pd.DataFrame(data)
 
@@ -32,4 +32,4 @@ fig_corr.update_layout(title="Immediate Onset of Thermal Degradation", **layout_
 
 # 4. Export as PDF for LaTeX
 fig_corr.write_image("export_temporal_correlations.pdf", scale=3)
-print("✅ Success! export_temporal_correlations.pdf generated.")
+print("✅ Success! export_temporal_correlations.pdf generated with 16-hour deep aging data.")
