@@ -23,6 +23,7 @@ st.sidebar.header("DEI-FCTUC Research Filters")
 KWH_PRICE = st.sidebar.slider("Electricity Cost (€/kWh)", 0.10, 0.50, 0.22)
 base_path = os.path.expanduser("~/git/llm-energy-tests/logs/")
 
+# Safely check if the base path exists
 if not os.path.exists(base_path):
     st.error(f"Base path does not exist: {base_path}")
     st.stop()
@@ -33,6 +34,7 @@ if not available_dates:
     st.error(f"No log directories found in {base_path}")
     st.stop()
 
+# Multiselect for combining two experiment folders
 selected_dates = st.sidebar.multiselect(
     "Select Experiment Dates (Max 2)", 
     options=available_dates, 
@@ -46,38 +48,46 @@ st.sidebar.subheader("📤 IEEE Publication Export")
 format_choice = st.sidebar.selectbox("Vector/Raster Format", ["pdf", "svg", "eps", "png"])
 dpi_choice = st.sidebar.slider("Resolution (DPI)", 150, 600, 300)
 
+# --- Data Loader (Updated to Merge Inference and System Data) ---
 @st.cache_data
 def load_research_data(date_folders):
     all_dfs = []
     for date_folder in date_folders:
         log_dir = os.path.join(base_path, date_folder)
+        # Target the inference files first
         inference_files = glob.glob(f"{log_dir}/*_inference.csv")
         
         for inf_file in inference_files:
-            # 1. Read Inference
+            # 1. Read the Inference Data (Contains TPS)
             df_inf = pd.read_csv(inf_file)
             
-            # 2. Read and Merge System Data (Temp, RAM_MB)
+            # 2. Find and read the matching System Data (Contains Temp, RAM_MB, CPU_Load)
             sys_file = inf_file.replace('_inference.csv', '_system.csv')
+            
             if os.path.exists(sys_file):
                 df_sys = pd.read_csv(sys_file)
+                # Merge the two DataFrames on the 'Time' column
                 df_temp = pd.merge(df_inf, df_sys, on='Time', how='inner')
             else:
+                # Fallback if the system file is missing
                 df_temp = df_inf
                 
-            # 3. Read and Merge Physical Data (Watts)
+            # Optional: Find and merge the Physical Data (Contains Watts) if it exists
             phys_file = inf_file.replace('_inference.csv', '_physical.csv')
             if os.path.exists(phys_file):
                 df_phys = pd.read_csv(phys_file)
-                # Merge physical wall-power into the main dataframe
                 df_temp = pd.merge(df_temp, df_phys, on='Time', how='inner')
             
             df_temp['Experiment_Folder'] = date_folder
             
+            # 3. Model name extraction
             if 'Model' not in df_temp.columns:
+                # e.g., 'deepseek-v2_lite_035438_inference.csv'
                 base_name = os.path.basename(inf_file).replace('_inference.csv', '')
                 parts = base_name.split('_')
+                # Keep everything except the timestamp (the last part)
                 model_name = '_'.join(parts[:-1]) 
+                
                 df_temp['Model'] = model_name
                 
             all_dfs.append(df_temp)
@@ -91,6 +101,7 @@ if selected_dates:
     df = load_research_data(selected_dates)
 
     if not df.empty:
+        # Model selection via checkboxes
         st.sidebar.divider()
         st.sidebar.subheader("Select Models")
         
@@ -101,103 +112,40 @@ if selected_dates:
             if st.sidebar.checkbox(model, value=True):
                 selected_models.append(model)
                 
+        # Filter dataframe by checked models
         filtered_df = df[df['Model'].isin(selected_models)]
         
         if filtered_df.empty:
             st.warning("Please select at least one model from the sidebar to view data.")
         else:
+            # KPI Row 
             m1, m2, m3, m4 = st.columns(4)
+            
+            # Safely render metrics if columns exist after the merge
             if 'TPJ' in filtered_df.columns:
                 m1.metric("Avg TPJ", f"{filtered_df['TPJ'].mean():.2f}", help="Tokens per Joule")
             else:
                 m1.metric("Avg TPJ", "N/A")
                 
-            if 'Watts' in filtered_df.columns:
-                m2.metric("Physical Power (Avg)", f"{filtered_df['Watts'].mean():.1f} W", delta=f"{filtered_df['Watts'].max():.1f} W Max", delta_color="inverse")
-            elif 'Leakage_Delta' in filtered_df.columns:
-                m2.metric("Thermal Leakage", f"{filtered_df['Leakage_Delta'].mean():.1f} W")
+            if 'Leakage_Delta' in filtered_df.columns:
+                m2.metric("Thermal Leakage (Avg)", f"{filtered_df['Leakage_Delta'].mean():.1f} W", delta=f"{filtered_df['Leakage_Delta'].max():.1f} W Max")
             else:
-                m2.metric("Physical Power", "N/A")
+                m2.metric("Thermal Leakage (Avg)", "N/A")
                 
             if 'Temp' in filtered_df.columns:
                 m3.metric("Mean Temp", f"{filtered_df['Temp'].mean():.1f} °C")
+            
             if 'TPS' in filtered_df.columns:
                 m4.metric("Avg TPS", f"{filtered_df['TPS'].mean():.2f} t/s")
             
             st.divider()
-
-            ### --- CLUSTER STATS & PERCENTILES ---
-            st.subheader("📊 Cluster Performance & Percentile Analysis")
-            st.markdown("Calculates the central tendency (mean) and performance spread (95th - 5th percentile) to identify extreme instability caused by thermal saturation and software aging.")
-
-            agg_dict = {}
-            if 'TPS' in filtered_df.columns:
-                agg_dict['TPS_Mean'] = ('TPS', 'mean')
-                agg_dict['TPS_5th'] = ('TPS', lambda x: x.quantile(0.05))
-                agg_dict['TPS_95th'] = ('TPS', lambda x: x.quantile(0.95))
-            if 'Temp' in filtered_df.columns:
-                agg_dict['Temp_Mean'] = ('Temp', 'mean')
-                agg_dict['Temp_5th'] = ('Temp', lambda x: x.quantile(0.05))
-                agg_dict['Temp_95th'] = ('Temp', lambda x: x.quantile(0.95))
-            if 'RAM_MB' in filtered_df.columns:
-                agg_dict['RAM_Mean'] = ('RAM_MB', 'mean')
-                agg_dict['RAM_Max_Bloat'] = ('RAM_MB', lambda x: x.quantile(0.99)) 
-                
-            if agg_dict:
-                cluster_stats = filtered_df.groupby(['Model', 'Experiment_Folder']).agg(**agg_dict).reset_index()
-
-                if 'TPS' in filtered_df.columns:
-                    cluster_stats['TPS_Diff (95th-5th)'] = cluster_stats['TPS_95th'] - cluster_stats['TPS_5th']
-                if 'Temp' in filtered_df.columns:
-                    cluster_stats['Temp_Diff (95th-5th)'] = cluster_stats['Temp_95th'] - cluster_stats['Temp_5th']
-
-                format_dict = {}
-                for col in cluster_stats.columns:
-                    if 'TPS' in col: format_dict[col] = '{:.2f}'
-                    elif 'Temp' in col: format_dict[col] = '{:.1f} °C'
-                    elif 'RAM' in col: format_dict[col] = '{:.0f} MB'
-
-                st.dataframe(cluster_stats.style.format(format_dict), use_container_width=True)
-
-                # Visualizing Performance Instability
-                if 'TPS_Diff (95th-5th)' in cluster_stats.columns:
-                    fig_spread = px.bar(
-                        cluster_stats, 
-                        x="Model", 
-                        y="TPS_Diff (95th-5th)", 
-                        color="Experiment_Folder",
-                        barmode="group",
-                        title="Tokens-per-Second Spread (95th - 5th Percentile)",
-                        labels={"TPS_Diff (95th-5th)": "TPS Spread (Wider = More Instability)"},
-                        template="plotly_dark"
-                    )
-                    st.plotly_chart(fig_spread, use_container_width=True)
-
-            st.divider()
             
-            # --- NEW: ENERGY CONSUMPTION GRAPHIC ---
-            if 'Watts' in filtered_df.columns:
-                st.subheader("⚡ Physical Energy Consumption Distribution")
-                st.markdown("Visualizes absolute hardware ground truth. Bypassing software-telemetry (RAPL) reveals the exponential power penalty triggered when heavy models like Mistral and WizardLM2 hit their thermal ceiling.")
-                
-                # A Box plot maps the median power draw while exposing high-wattage leakage outliers
-                fig_energy = px.box(
-                    filtered_df,
-                    x="Model",
-                    y="Watts",
-                    color="Experiment_Folder",
-                    title="Hardware Power Draw (Watts) by Model",
-                    labels={"Watts": "Absolute Power Draw (W)", "Model": "Edge AI Model"},
-                    template="plotly_dark"
-                )
-                st.plotly_chart(fig_energy, use_container_width=True)
-                st.divider()
-            
-            # --- COMPARATIVE SCATTER PLOT ---
+            # Generate the comparative graph mapping Temp vs TPS
             if 'Temp' in filtered_df.columns and 'TPS' in filtered_df.columns:
                 st.subheader("Comparative Analysis: Temperature vs. TPS")
                 
-                fig_scatter = px.scatter(
+                # Colors map to models, symbols map to the experimental folder to compare runs
+                fig = px.scatter(
                     filtered_df, 
                     x="Temp", 
                     y="TPS", 
@@ -206,9 +154,12 @@ if selected_dates:
                     title="Throughput Decay by Hardware Temperature",
                     labels={"Temp": "Hardware Temperature (°C)", "TPS": "Tokens per Second (TPS)"},
                     template="plotly_dark",
-                    hover_data=['Time', 'RAM_MB', 'Watts'] if 'RAM_MB' in filtered_df.columns else None
+                    hover_data=['Time', 'RAM_MB'] if 'RAM_MB' in filtered_df.columns else None
                 )
-                st.plotly_chart(fig_scatter, use_container_width=True)
+                
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.error("Missing 'Temp' or 'TPS' columns in the dataset for visualization. Ensure _system.csv files are present.")
     else:
         st.error("No valid research logs found for the selected dates.")
 else:
