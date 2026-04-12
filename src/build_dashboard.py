@@ -4,6 +4,7 @@ import plotly.express as px
 import glob
 import os
 import plotly.io as pio
+import numpy as np
 
 ### --- Page Config ---
 st.set_page_config(layout="wide", page_title="FCTUC-DEI: LLM Sustainability Lab")
@@ -69,7 +70,6 @@ def load_research_data(date_folders):
             phys_file = inf_file.replace('_inference.csv', '_physical.csv')
             if os.path.exists(phys_file):
                 df_phys = pd.read_csv(phys_file)
-                # Merge physical wall-power into the main dataframe
                 df_temp = pd.merge(df_temp, df_phys, on='Time', how='inner')
             
             df_temp['Experiment_Folder'] = date_folder
@@ -142,6 +142,8 @@ if selected_dates:
             if 'RAM_MB' in filtered_df.columns:
                 agg_dict['RAM_Mean'] = ('RAM_MB', 'mean')
                 agg_dict['RAM_Max_Bloat'] = ('RAM_MB', lambda x: x.quantile(0.99)) 
+            if 'Watts' in filtered_df.columns:
+                agg_dict['Watts_Mean'] = ('Watts', 'mean')
                 
             if agg_dict:
                 cluster_stats = filtered_df.groupby(['Model', 'Experiment_Folder']).agg(**agg_dict).reset_index()
@@ -156,31 +158,91 @@ if selected_dates:
                     if 'TPS' in col: format_dict[col] = '{:.2f}'
                     elif 'Temp' in col: format_dict[col] = '{:.1f} °C'
                     elif 'RAM' in col: format_dict[col] = '{:.0f} MB'
+                    elif 'Watts' in col: format_dict[col] = '{:.1f} W'
 
                 st.dataframe(cluster_stats.style.format(format_dict), use_container_width=True)
 
-                # Visualizing Performance Instability
-                if 'TPS_Diff (95th-5th)' in cluster_stats.columns:
-                    fig_spread = px.bar(
-                        cluster_stats, 
-                        x="Model", 
-                        y="TPS_Diff (95th-5th)", 
-                        color="Experiment_Folder",
-                        barmode="group",
-                        title="Tokens-per-Second Spread (95th - 5th Percentile)",
-                        labels={"TPS_Diff (95th-5th)": "TPS Spread (Wider = More Instability)"},
-                        template="plotly_dark"
-                    )
-                    st.plotly_chart(fig_spread, use_container_width=True)
+                # --- ROW 2 VISUALIZATIONS ---
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Visualizing Performance Instability
+                    if 'TPS_Diff (95th-5th)' in cluster_stats.columns:
+                        st.markdown("#### Visualizing Performance Instability")
+                        fig_spread = px.bar(
+                            cluster_stats, 
+                            x="Model", 
+                            y="TPS_Diff (95th-5th)", 
+                            color="Experiment_Folder",
+                            barmode="group",
+                            title="Tokens-per-Second Spread (95th - 5th Percentile)",
+                            labels={"TPS_Diff (95th-5th)": "TPS Spread (Wider = More Instability)"},
+                            template="plotly_dark"
+                        )
+                        st.plotly_chart(fig_spread, use_container_width=True)
+
+                with col2:
+                    # --- NEW: ENERGY PERFORMANCE (TPJ) IMPROVEMENT CHART ---
+                    print(f"Selected Dates: {len(selected_dates)}, Watts_Mean: {'Watts_Mean' in cluster_stats.columns}, TPS_Mean: {'TPS_Mean' in cluster_stats.columns}")
+                    if len(selected_dates) == 2 and 'Watts_Mean' in cluster_stats.columns and 'TPS_Mean' in cluster_stats.columns:
+                        folder_A, folder_B = selected_dates[1], selected_dates[0]  # folder_B is Baseline
+                        
+                        # Pivot both TPS and Watts to compare Folders A and B simultaneously
+                        pivot_df = cluster_stats.pivot(index='Model', columns='Experiment_Folder', values=['Watts_Mean', 'TPS_Mean'])
+                        # Flatten MultiIndex Columns
+                        pivot_df.columns = [f"{col[0]}_{col[1]}" for col in pivot_df.columns]
+                        pivot_df = pivot_df.reset_index()
+                        print(f"Pivoted DataFrame Columns: {pivot_df.columns}")
+                        
+                        if f'Watts_Mean_{folder_A}' in pivot_df.columns and f'Watts_Mean_{folder_B}' in pivot_df.columns:
+                            # 1. Calculate Energy Change
+                            pivot_df['Energy Change (%)'] = ((pivot_df[f'Watts_Mean_{folder_A}'] - pivot_df[f'Watts_Mean_{folder_B}']) / pivot_df[f'Watts_Mean_{folder_B}']) * 100
+                            
+                            # 2. Calculate TPS Change
+                            pivot_df['TPS Change (%)'] = ((pivot_df[f'TPS_Mean_{folder_A}'] - pivot_df[f'TPS_Mean_{folder_B}']) / pivot_df[f'TPS_Mean_{folder_B}']) * 100
+                            
+                            # 3. Calculate Efficiency (Tokens per Joule) Change
+                            tpj_A = pivot_df[f'TPS_Mean_{folder_A}'] / pivot_df[f'Watts_Mean_{folder_A}']
+                            tpj_B = pivot_df[f'TPS_Mean_{folder_B}'] / pivot_df[f'Watts_Mean_{folder_B}']
+                            pivot_df['Efficiency (TPJ) Change (%)'] = ((tpj_A - tpj_B) / tpj_B) * 100
+                            
+                            # Melt the dataframe for a grouped Plotly bar chart
+                            plot_df = pivot_df.melt(
+                                id_vars='Model', 
+                                value_vars=['TPS Change (%)', 'Energy Change (%)', 'Efficiency (TPJ) Change (%)'], 
+                                var_name='Metric', 
+                                value_name='Change (%)'
+                            )
+                            
+                            st.markdown("#### Performance Drop vs. Energy Savings")
+                            fig_delta = px.bar(
+                                plot_df,
+                                x='Model',
+                                y='Change (%)',
+                                color='Metric',
+                                barmode='group',
+                                text=plot_df['Change (%)'].apply(lambda x: f"{x:+.1f}%"),
+                                title=f"Efficiency Impact: {folder_A} vs Baseline ({folder_B})",
+                                labels={'Change (%)': "Change (%)", 'Model': "Edge AI Model"},
+                                template="plotly_dark",
+                                color_discrete_map={
+                                    'TPS Change (%)': '#636efa',             # Blue
+                                    'Energy Change (%)': '#ef553b',          # Red
+                                    'Efficiency (TPJ) Change (%)': '#00cc96' # Green
+                                }
+                            )
+                            fig_delta.update_traces(textposition='outside')
+                            # Expand the Y-axis slightly so labels don't clip
+                            fig_delta.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+                            st.plotly_chart(fig_delta, use_container_width=True)
 
             st.divider()
             
-            # --- NEW: ENERGY CONSUMPTION GRAPHIC ---
+            # --- ENERGY CONSUMPTION GRAPHIC ---
             if 'Watts' in filtered_df.columns:
                 st.subheader("⚡ Physical Energy Consumption Distribution")
-                st.markdown("Visualizes absolute hardware ground truth. Bypassing software-telemetry (RAPL) reveals the exponential power penalty triggered when heavy models like Mistral and WizardLM2 hit their thermal ceiling.")
+                st.markdown("Visualizes absolute hardware ground truth. Bypassing software-telemetry reveals the exponential power penalty triggered when heavy models hit their thermal ceiling.")
                 
-                # A Box plot maps the median power draw while exposing high-wattage leakage outliers
                 fig_energy = px.box(
                     filtered_df,
                     x="Model",
@@ -193,20 +255,22 @@ if selected_dates:
                 st.plotly_chart(fig_energy, use_container_width=True)
                 st.divider()
             
-            # --- COMPARATIVE SCATTER PLOT ---
-            if 'Temp' in filtered_df.columns and 'TPS' in filtered_df.columns:
-                st.subheader("Comparative Analysis: Temperature vs. TPS")
+            # --- THERMAL LEAKAGE DENSITY SCATTER PLOT ---
+            if 'Temp' in filtered_df.columns and 'Watts' in filtered_df.columns:
+                st.subheader("Comparative Analysis: Thermal Leakage (Temperature vs. Physical Power)")
+                st.markdown("This density scatter plot maps the absolute physical power gap (W) against hardware temperature. It exposes the exponential physical power leakage triggered when models cross the critical thermal inflection point.")
                 
                 fig_scatter = px.scatter(
                     filtered_df, 
                     x="Temp", 
-                    y="TPS", 
+                    y="Watts", 
                     color="Model", 
                     symbol="Experiment_Folder",
-                    title="Throughput Decay by Hardware Temperature",
-                    labels={"Temp": "Hardware Temperature (°C)", "TPS": "Tokens per Second (TPS)"},
+                    title="Physical Power Gap (W) by Hardware Temperature",
+                    labels={"Temp": "Hardware Temperature (°C)", "Watts": "Absolute Physical Power (W)"},
                     template="plotly_dark",
-                    hover_data=['Time', 'RAM_MB', 'Watts'] if 'RAM_MB' in filtered_df.columns else None
+                    opacity=0.6,
+                    hover_data=['Time', 'TPS', 'RAM_MB'] if 'RAM_MB' in filtered_df.columns and 'TPS' in filtered_df.columns else None
                 )
                 st.plotly_chart(fig_scatter, use_container_width=True)
     else:
