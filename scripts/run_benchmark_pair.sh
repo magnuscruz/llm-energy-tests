@@ -1,5 +1,7 @@
 #!/bin/bash
-# DEI Research Benchmark - LLM Software Aging & Thermal Leakage Tool (Updated for 48hr Pair)
+# DEI Research Benchmark - LLM Software Aging & Thermal Leakage Tool
+# This script runs a pairwise benchmark comparing a dense model (LLaMA 3.1 8B) against a MoE model (DeepSeek-V2 Lite) under identical conditions.
+# sudo nohup ./scripts/run_benchmark_pair.sh 172800 --throttle 87.5 > benchmark_run_pair.log 2>&1 &
 
 # 1. Enforce Root Privileges for Governor and Cache control
 if [ "$EUID" -ne 0 ]; then
@@ -26,8 +28,9 @@ fi
 
 # 2. Updated Configuration: $1 as duration (in seconds) Run & Model Pair (Dense vs MoE)
 DURATION_SECONDS=$1
-WARMUP_DURATION=600 # 10 minutes
-MODELS=("llama3.1:8b" "deepseek-v2:lite")
+WARMUP_DURATION=600 # 10 
+#MODELS=("llama3.1:8b" "deepseek-v2:lite" "phi3:mini" "qwen2.5:0.5b") # Original pairwise comparison, but you can switch to the dense vs MoE pair if desired
+MODELS=("phi3:mini" "qwen2.5:0.5b") # Updated to match the models in your original script, but you can switch back to the dense vs MoE pair if desired
 PROJECT_ROOT="/home/ubuntu/git/llm-energy-tests"
 LOG_DIR="$PROJECT_ROOT/logs/$(date +%Y-%m-%d)"
 WARMUP_DIR="${LOG_DIR}/warmup_logs"
@@ -177,13 +180,14 @@ for MODEL in "${MODELS[@]}"; do
     TIMESTAMP=$(date +%H%M%S)
     echo "[*] Executing ${WARMUP_DURATION}s Warm-Up Phase..."
     
-    start_tapo_monitor "$WARMUP_DIR" "$MODEL" "$TIMESTAMP"
+    DURATION_HOURS=$(echo "scale=2; $DURATION_SECONDS / 3600" | bc)
+
+    start_tapo_monitor "$WARMUP_DIR" "$MODEL" "$DURATION_HOURS"h_warmup
     run_inference_loop "$MODEL" "$WARMUP_DIR/${MODEL//:/_}_warmup.csv" "$WARMUP_DURATION" &
     INF_PID=$!
     wait $INF_PID
     kill $TAPO_PID 2>/dev/null
         
-    DURATION_HOURS=$(echo "scale=2; $DURATION_SECONDS / 3600" | bc)
     echo "Warm-Up Complete. Starting ${DURATION_HOURS}-hour Continuous Evaluation for $MODEL..."
     
     # Ensure a pristine environment before the XX-hour run begins
@@ -194,10 +198,10 @@ for MODEL in "${MODELS[@]}"; do
     echo "[*] Executing Continuous Deep Aging Phase ($TEST_DURATION seconds)..."
 
 
-    LOG_FILE="$LOG_DIR/deep_aging/${MODEL//:/_}_${DURATION_HOURS}h.csv"
+    LOG_FILE="$LOG_DIR/deep_aging/${MODEL//:/_}_${DURATION_HOURS}h_inference.csv"
     echo "Starting ${DURATION_HOURS}-hour continuous evaluation. Logging to $LOG_FILE"
 
-    start_tapo_monitor "$AGING_DIR" "$MODEL" "$TIMESTAMP"
+    start_tapo_monitor "$AGING_DIR" "$MODEL" "$DURATION_HOURS"h_aging
     run_inference_loop "$MODEL" "$LOG_FILE" "$DURATION_SECONDS" &
     INF_PID=$!
     wait $INF_PID
