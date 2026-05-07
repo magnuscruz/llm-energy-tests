@@ -29,8 +29,8 @@ fi
 # 2. Updated Configuration: $1 as duration (in seconds) Run & Model Pair (Dense vs MoE)
 DURATION_SECONDS=$1
 WARMUP_DURATION=600 # 10 
-#MODELS=("llama3.1:8b" "deepseek-v2:lite" "phi3:mini" "qwen2.5:0.5b") # Original pairwise comparison, but you can switch to the dense vs MoE pair if desired
-MODELS=("phi3:mini" "qwen2.5:0.5b") # Updated to match the models in your original script, but you can switch back to the dense vs MoE pair if desired
+MODELS=("phi3:mini" "qwen2.5:0.5b" "llama3.1:8b" "deepseek-v2:lite") # Updated to include both the dense vs MoE pair and the smaller models for a more comprehensive comparison. You can adjust this list based on your specific benchmarking goals.
+#MODELS=("phi3:mini" "qwen2.5:0.5b") # Updated to match the models in your original script, but you can switch back to the dense vs MoE pair if desired
 PROJECT_ROOT="/home/ubuntu/git/llm-energy-tests"
 LOG_DIR="$PROJECT_ROOT/logs/$(date +%Y-%m-%d)"
 WARMUP_DIR="${LOG_DIR}/warmup_logs"
