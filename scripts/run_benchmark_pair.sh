@@ -134,7 +134,7 @@ run_inference_loop() {
     local end_time=$(( $(date +%s) + duration ))
 
     # New headers splitting Prefill and Decode phases
-    echo "timestamp,model,cpu_temp,ram_used_mb,prefill_tps,decode_tps" > "$log_file"
+    echo "timestamp,model,cpu_temp,ram_used_mb,prefill_tps,decode_tps,prefill_dur_s,decode_dur_s" > "$log_file"
 
     while [ $(date +%s) -lt $end_time ]; do
         local current_time=$(date +%s)
@@ -160,8 +160,12 @@ run_inference_loop() {
         local prefill_tps=$(echo "scale=2; ($prefill_tokens * 1000000000) / $prefill_dur_ns" | bc)
         local decode_tps=$(echo "scale=2; ($decode_tokens * 1000000000) / $decode_dur_ns" | bc)
 
+        # Convert durations from nanoseconds to seconds
+        local prefill_dur_s=$(echo "scale=6; $prefill_dur_ns / 1000000000" | bc)
+        local decode_dur_s=$(echo "scale=6; $decode_dur_ns / 1000000000" | bc)
+
         # Log the aggregated metrics
-        echo "$current_time,$model,$cpu_temp,$ram_used,$prefill_tps,$decode_tps" >> "$log_file"
+        echo "$current_time,$model,$cpu_temp,$ram_used,$prefill_tps,$decode_tps,$prefill_dur_s,$decode_dur_s" >> "$log_file"
     done
 }
 
