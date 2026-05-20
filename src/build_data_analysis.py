@@ -3,8 +3,8 @@ import pandas as pd
 
 # model_name = 'llama3.1_8b'  # Update this to your actual model name
 # model_name = 'deepseek-v2_lite'  # Update this to your actual model name
-# model_name = 'qwen2.5_0.5b'  # Update this to your actual model name
-model_name = 'phi3_mini'  # Update this to your actual model name
+model_name = 'qwen2.5_0.5b'  # Update this to your actual model name
+# model_name = 'phi3_mini'  # Update this to your actual model name
 
 # 1. Load the datasets
 df_inf = pd.read_csv(f'{model_name}_48.00h_inference.csv')
