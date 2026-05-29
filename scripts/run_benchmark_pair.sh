@@ -101,7 +101,7 @@ async def monitor():
     try:
         client = ApiClient(os.environ['TAPO_USER'], os.environ['TAPO_PASS'])
         device = await client.p115(os.environ['TAPO_IP'])
-        print('Time,Watts')
+        print('timestamp,power_w')
         sys.stdout.flush()
         while True:
             energy = await device.get_current_power()
