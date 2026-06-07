@@ -39,7 +39,7 @@ AGING_DIR="${LOG_DIR}/deep_aging"
 # Tapo P115 Config
 export TAPO_USER="magnuscruz@gmail.com"
 export TAPO_PASS="***REMOVIDO***"
-export TAPO_IP="192.168.0.100"
+export TAPO_IP="192.168.0.200"
 PYTHON_VENV="$PROJECT_ROOT/venv/bin/python3"
 
 
