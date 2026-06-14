@@ -10,8 +10,8 @@ echo "🚀 LLM Energy Tests - Hugging Face Spaces Deployment Script"
 echo "=============================================================="
 
 # Configuration
-GITHUB_REPO="your-username/llm-energy-tests"
-HF_SPACE_REPO="your-hf-username/llm-energy-tests-dashboard"
+GITHUB_REPO="magnuscruz/llm-energy-tests"
+HF_SPACE_REPO="magnuscruz/llm-energy-tests"
 BRANCH="main"
 
 # Colors for output
@@ -188,6 +188,6 @@ echo "  2. Set up your Space with Streamlit SDK"
 echo "  3. Enable GitHub auto-deploy from: $GITHUB_REPO"
 echo "  4. Your dashboard will auto-deploy on future pushes to $BRANCH"
 echo ""
-echo "Dashboard URL will be: https://huggingface.co/spaces/your-hf-username/llm-energy-tests-dashboard"
+echo "Dashboard URL will be: https://huggingface.co/spaces/magnuscruz/llm-energy-tests"
 echo ""
 echo "For more info: https://huggingface.co/docs/hub/spaces"

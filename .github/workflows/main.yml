@@ -14,11 +14,12 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Push to Hugging Face
+      - name: Push to Hugging Face Space
         env:
           HF_USERNAME: magnuscruz
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           SPACE_NAME: llm-energy-tests
         run: |
+          git remote remove space || true
           git remote add space https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$SPACE_NAME
           git push space main --force

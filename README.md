@@ -46,7 +46,7 @@ ollama serve &  # Start in background
 
 ### Installation
 ```bash
-git clone https://github.com/your-username/llm-energy-tests.git
+git clone https://github.com/magnuscruz/llm-energy-tests.git
 cd llm-energy-tests
 
 # Python environment
@@ -248,7 +248,7 @@ Deploy dashboard to Hugging Face Spaces with GitHub auto-sync.
 # Follow interactive prompts to set up GitHub integration
 ```
 
-Final dashboard URL: `https://huggingface.co/spaces/<username>/llm-energy-tests-dashboard`
+Final dashboard URL: `https://huggingface.co/spaces/magnuscruz/llm-energy-tests`
 
 See [DEPLOY_HF_SPACES.md](DEPLOY_HF_SPACES.md) for setup guide.
 
@@ -340,7 +340,47 @@ Automatic deployment with GitHub integration:
 git push origin main  # Triggers auto-deploy
 ```
 
-Dashboard auto-updates on every push. See [DEPLOY_HF_SPACES.md](DEPLOY_HF_SPACES.md).
+Dashboard auto-updates on every push.
+
+#### HF Spaces deploy checklist
+
+1. Confirm repository includes:
+   - `app.py`
+   - `src/build_dashboard.py`
+   - `src/requirements.txt`
+   - `.streamlit/config.toml`
+   - `.github/workflows/main.yml`
+   - `logs/` if you want the dashboard to include data
+
+2. Create the Space:
+   - Visit: https://huggingface.co/new-space
+   - Space name: `llm-energy-tests`
+   - SDK: `Streamlit`
+   - Visibility: `Public` or `Private`
+   - License: choose your preferred license
+
+3. Enable GitHub auto-deploy:
+   - In the Space settings, open **Repository settings**
+   - Enable **GitHub integration**
+   - Connect repository: `magnuscruz/llm-energy-tests`
+   - Auto-deploy branch: `main`
+
+4. Push changes:
+
+```bash
+git add .
+git commit -m "Deploy dashboard to HF Spaces"
+git push origin main
+```
+
+5. Verify deployment:
+   - Live URL: `https://huggingface.co/spaces/magnuscruz/llm-energy-tests`
+   - See the Space **Logs** tab for build status
+
+6. Notes:
+   - If `logs/` is too large for Git, use Git LFS or external storage.
+   - If the app loads but has no data, ensure `logs/` is present or update the dashboard to source remote data.
+   - The workflow `.github/workflows/validate-hf-spaces.yml` validates app imports and syntax before deployment.
 
 ---
 

@@ -34,7 +34,7 @@ This script will:
 2. Click on **Repository settings**
 3. Enable **GitHub integration**
 4. Authorize Hugging Face with GitHub
-5. Select your repository: `your-username/llm-energy-tests`
+5. Select your repository: `magnuscruz/llm-energy-tests`
 6. Set auto-deploy branch: `main`
 7. Save settings
 
@@ -45,7 +45,7 @@ Once connected:
 - You'll see a build log in the Space's **Logs** tab
 - Once successful, your dashboard will be live at:
   ```
-  https://huggingface.co/spaces/your-hf-username/llm-energy-tests-dashboard
+  https://huggingface.co/spaces/magnuscruz/llm-energy-tests
   ```
 
 ## File Structure
@@ -128,7 +128,7 @@ git push
 # Create a dataset on HF Hub instead of storing in Git
 # Reference it in your code:
 from datasets import load_dataset
-dataset = load_dataset("your-username/llm-energy-logs")
+dataset = load_dataset("magnuscruz/llm-energy-logs")
 ```
 
 ### Option 3: Skip Large Files
@@ -168,4 +168,4 @@ jobs:
 
 ---
 
-**Deployed Dashboard**: Will be available at `https://huggingface.co/spaces/<your-username>/llm-energy-tests-dashboard`
+**Deployed Dashboard**: Will be available at `https://huggingface.co/spaces/magnuscruz/llm-energy-tests`

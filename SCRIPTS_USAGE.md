@@ -54,7 +54,7 @@ ollama --version
 ### 1. Clone Repository
 ```bash
 cd ~
-git clone https://github.com/your-username/llm-energy-tests.git
+git clone https://github.com/magnuscruz/llm-energy-tests.git
 cd llm-energy-tests
 ```
 
@@ -357,7 +357,7 @@ cd ~/git/llm-energy-tests
 
 **Final Dashboard URL**:
 ```
-https://huggingface.co/spaces/<your-hf-username>/llm-energy-tests-dashboard
+https://huggingface.co/spaces/magnuscruz/llm-energy-tests
 ```
 
 **Auto-Deployment After Setup**:
@@ -367,7 +367,7 @@ git add .
 git commit -m "Update dashboard"
 git push origin main  # <- Triggers auto-deploy
 
-# Monitor build at: https://huggingface.co/spaces/<username>/llm-energy-tests-dashboard
+# Monitor build at: https://huggingface.co/spaces/magnuscruz/llm-energy-tests
 ```
 
 ---
@@ -568,7 +568,7 @@ git status
 git remote -v
 
 # Set correct remote if missing
-git remote add origin https://github.com/your-username/llm-energy-tests.git
+git remote add origin https://github.com/magnuscruz/llm-energy-tests.git
 
 # Try push again
 git push origin main
@@ -621,7 +621,7 @@ watch -n 1 "free -h && top -b -n 1 | head -10 && nvidia-smi"
 ## Contact & Support
 
 For issues or questions:
-- **GitHub Issues**: https://github.com/your-username/llm-energy-tests/issues
+- **GitHub Issues**: https://github.com/magnuscruz/llm-energy-tests/issues
 - **Documentation**: See [DEPLOY_HF_SPACES.md](DEPLOY_HF_SPACES.md) for deployment troubleshooting
 - **Dashboard Guide**: See [build_dashboard.py](src/build_dashboard.py) for visualization features
 
