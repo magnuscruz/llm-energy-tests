@@ -134,34 +134,24 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("Baseline Comparison Mode")
 enable_comparison = st.sidebar.checkbox("Enable Comparison Analysis", value=False, help="Compare metrics between two different test baselines")
 
-comparison_baseline_1 = None
-comparison_baseline_2 = None
+# Comparison baseline multiselect
+comparison_baselines = []
 
 if enable_comparison:
     available_baselines = sorted(df_master["Test_Baseline"].unique())
-    
-    col_base1, col_base2 = st.sidebar.columns(2)
-    with col_base1:
-        comparison_baseline_1 = st.selectbox(
-            "Baseline 1:",
-            options=available_baselines,
-            key="baseline_1"
-        )
-    
-    with col_base2:
-        remaining_baselines = [b for b in available_baselines if b != comparison_baseline_1]
-        comparison_baseline_2 = st.selectbox(
-            "Baseline 2:",
-            options=remaining_baselines,
-            key="baseline_2"
-        )
+    comparison_baselines = st.sidebar.multiselect(
+        "Select Baselines:",
+        options=available_baselines,
+        default=available_baselines,
+        help="Compare multiple test baselines together."
+    )
 
 # Apply Filters
-if enable_comparison and comparison_baseline_1 and comparison_baseline_2:
+if enable_comparison and comparison_baselines:
     df_filtered = df_master[
         (df_master["Architecture"].isin(selected_models)) & 
         (df_master["Scenario"].isin(selected_scenarios)) &
-        (df_master["Test_Baseline"].isin([comparison_baseline_1, comparison_baseline_2]))
+        (df_master["Test_Baseline"].isin(comparison_baselines))
     ].copy()
 else:
     df_filtered = df_master[
@@ -216,12 +206,12 @@ st.plotly_chart(fig_ce, use_container_width=True)
 # --- Comparative Benchmark: Speed vs. Sustainability ---
 st.markdown("---")
 
-if enable_comparison and comparison_baseline_1 and comparison_baseline_2:
-    st.subheader(f"5. Baseline Comparison: {comparison_baseline_1} vs. {comparison_baseline_2}")
+if enable_comparison and comparison_baselines:
+    baseline_label = " vs. ".join(comparison_baselines)
+    st.subheader(f"5. Baseline Comparison: {baseline_label}")
     st.markdown(f"""
-    **Direct comparison** of performance and sustainability metrics between two test baselines.
-    - **Baseline 1:** {comparison_baseline_1}
-    - **Baseline 2:** {comparison_baseline_2}
+    **Direct comparison** of performance and sustainability metrics across the selected test baselines.
+    - **Selected baselines:** {', '.join(comparison_baselines)}
     
     This analysis reveals how different operational conditions impact speed, power consumption, and efficiency across all tested architectures.
     """)
