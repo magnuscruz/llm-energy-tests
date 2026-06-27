@@ -11,7 +11,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -33,16 +33,16 @@ jobs:
       - name: Validate imports
         run: |
           python - <<'PY'
-import streamlit
-import pandas
-import plotly
-import os
-import sys
-from pathlib import Path
-ROOT = Path('')
-sys.path.insert(0, str(ROOT / 'src'))
-import build_dashboard
-PY
+          import streamlit
+          import pandas
+          import plotly
+          import os
+          import sys
+          from pathlib import Path
+          ROOT = Path('')
+          sys.path.insert(0, str(ROOT / 'src'))
+          import build_dashboard
+          PY
 
       - name: Print summary
         run: |
