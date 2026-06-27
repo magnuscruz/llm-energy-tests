@@ -1,4 +1,4 @@
-name: Validate Hugging Face Space Build
+name: Validate Application Build
 
 on:
   push:
@@ -25,9 +25,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r src/requirements.txt
 
+      # Valida apenas o ficheiro do dashboard (removemos o antigo app.py)
       - name: Validate Python files
         run: |
-          python -m py_compile app.py
           python -m py_compile src/build_dashboard.py
 
       - name: Validate imports
@@ -46,4 +46,4 @@ jobs:
 
       - name: Print summary
         run: |
-          echo "✅ HF Spaces validation completed successfully"
+          echo "✅ Application validation completed successfully (Ready for Google Cloud Run)"
