@@ -96,6 +96,7 @@ apply_throttling() {
 cat << 'EOF' > tapo_monitor_temp.py
 import asyncio, time, sys, os
 from tapo import ApiClient
+import os
 
 async def monitor():
     try:
@@ -111,6 +112,7 @@ async def monitor():
             sys.stdout.flush()
             await asyncio.sleep(1)
     except Exception as e:
+        print(f"Error in Tapo monitoring: {e}", file=sys.stderr)
         pass
 
 if __name__ == "__main__":

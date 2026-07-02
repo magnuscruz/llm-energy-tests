@@ -1,3 +1,5 @@
 beach_park.csv
 __pycache__/
 .streamlit/
+venv/
+.venv/
