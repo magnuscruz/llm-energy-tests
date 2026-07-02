@@ -1,0 +1,164 @@
+H/W path       Device     Class          Description
+====================================================
+                          system         System Product Name (SKU)
+/0                        bus            ROG STRIX B760-G GAMING WIFI
+/0/0                      memory         64KiB BIOS
+/0/c                      memory         64GiB System Memory
+/0/c/0                    memory         [empty]
+/0/c/1                    memory         32GiB DIMM Synchronous 4800 MHz (0.2 ns)
+/0/c/2                    memory         [empty]
+/0/c/3                    memory         32GiB DIMM Synchronous 4800 MHz (0.2 ns)
+/0/1b                     memory         288KiB L1 cache
+/0/1c                     memory         192KiB L1 cache
+/0/1d                     memory         7680KiB L2 cache
+/0/1e                     memory         24MiB L3 cache
+/0/1f                     memory         256KiB L1 cache
+/0/20                     memory         512KiB L1 cache
+/0/21                     memory         4MiB L2 cache
+/0/22                     memory         24MiB L3 cache
+/0/23                     processor      13th Gen Intel(R) Core(TM) i5-13500
+/0/100                    bridge         Intel Corporation
+/0/100/2       /dev/fb0   display        AlderLake-S GT1
+/0/100/a                  generic        Platform Monitoring Technology
+/0/100/e                  storage        Volume Management Device NVMe RAID Controller
+/0/100/14                 bus            Raptor Lake USB 3.2 Gen 2x2 (20 Gb/s) XHCI Host Controller
+/0/100/14/0    usb1       bus            xHCI Host Controller
+/0/100/14/0/2             input          AURA LED Controller
+/0/100/14/0/a             bus            ASM107x
+/0/100/14/0/b             bus            USB2.0 Hub
+/0/100/14/0/e             communication  AX211 Bluetooth
+/0/100/14/1    usb2       bus            xHCI Host Controller
+/0/100/14/1/9             bus            ASM107x
+/0/100/14.2               memory         RAM memory
+/0/100/14.3    wlp0s20f3  network        Raptor Lake-S PCH CNVi WiFi
+/0/100/15                 bus            Raptor Lake Serial IO I2C Host Controller #0
+/0/100/15.1               bus            Raptor Lake Serial IO I2C Host Controller #1
+/0/100/15.2               bus            Raptor Lake Serial IO I2C Host Controller #2
+/0/100/16                 communication  Raptor Lake CSME HECI #1
+/0/100/17      scsi4      storage        Raptor Lake SATA AHCI Controller
+/0/100/17/0    /dev/sda   disk           256GB KINGSTON SKC6002
+/0/100/17/0/1  /dev/sda1  volume         511MiB Windows FAT volume
+/0/100/17/0/2  /dev/sda2  volume         237GiB EXT4 volume
+/0/100/17/0/3  /dev/sda3  volume         976MiB Linux swap volume
+/0/100/17/1    /dev/sdb   disk           2TB ST2000DM008-2UB1
+/0/100/17/1/1  /dev/sdb1  volume         1074MiB Windows FAT volume
+/0/100/17/1/2  /dev/sdb2  volume         2GiB EXT4 volume
+/0/100/17/1/3  /dev/sdb3  volume         1859GiB EFI partition
+/0/100/1a                 bridge         Raptor Lake PCI Express Root Port #25
+/0/100/1c                 bridge         Raptor Lake PCI Express Root Port #1
+/0/100/1c.2               bridge         Intel Corporation
+/0/100/1c.2/0  eno1       network        Ethernet Controller I226-V
+/0/100/1d                 bridge         Intel Corporation
+/0/100/1f                 bridge         Intel Corporation
+/0/100/1f/0               system         PnP device PNP0c02
+/0/100/1f/1               system         PnP device PNP0c02
+/0/100/1f/2               system         PnP device PNP0c02
+/0/100/1f/3               system         PnP device PNP0c02
+/0/100/1f/4               system         PnP device PNP0c02
+/0/100/1f/5               system         PnP device PNP0c02
+/0/100/1f.3    card0      multimedia     Raptor Lake High Definition Audio Controller
+/0/100/1f.3/0  input10    input          HDA Intel PCH Line Out Surround
+/0/100/1f.3/1  input11    input          HDA Intel PCH Line Out CLFE
+/0/100/1f.3/2  input12    input          HDA Intel PCH Front Headphone
+/0/100/1f.3/3  input13    input          HDA Intel PCH HDMI/DP,pcm=3
+/0/100/1f.3/4  input14    input          HDA Intel PCH HDMI/DP,pcm=7
+/0/100/1f.3/5  input15    input          HDA Intel PCH HDMI/DP,pcm=8
+/0/100/1f.3/6  input16    input          HDA Intel PCH HDMI/DP,pcm=9
+/0/100/1f.3/7  input6     input          HDA Intel PCH Rear Mic
+/0/100/1f.3/8  input7     input          HDA Intel PCH Front Mic
+/0/100/1f.3/9  input8     input          HDA Intel PCH Line
+/0/100/1f.3/a  input9     input          HDA Intel PCH Line Out Front
+/0/100/1f.4               bus            Raptor Lake-S PCH SMBus Controller
+/0/100/1f.5               bus            Raptor Lake SPI (flash) Controller
+/1             input0     input          Sleep Button
+/2             input1     input          Power Button
+/3             input2     input          Power Button
+/4             input3     input          Eee PC WMI hotkeys
+/5             input4     input          Asus WMI hotkeys
+/6             input5     input          Video Bus
+
+VGA compatible controller: Intel Corporation AlderLake-S GT1 (rev 0c)
+Architecture:                x86_64
+  CPU op-mode(s):            32-bit, 64-bit
+  Address sizes:             46 bits physical, 48 bits virtual
+  Byte Order:                Little Endian
+CPU(s):                      20
+  On-line CPU(s) list:       0-19
+Vendor ID:                   GenuineIntel
+  Model name:                13th Gen Intel(R) Core(TM) i5-13500
+    CPU family:              6
+    Model:                   191
+    Thread(s) per core:      2
+    Core(s) per socket:      14
+    Socket(s):               1
+    Stepping:                2
+    CPU(s) scaling MHz:      44%
+    CPU max MHz:             4800.0000
+    CPU min MHz:             800.0000
+    BogoMIPS:                4992.00
+    Flags:                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush d
+                             ts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc
+                             art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf ts
+                             c_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma c
+                             x16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave
+                              avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp i
+                             brs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx
+                             2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt
+                              xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln
+                             pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke wai
+                             tpkg gfni vaes vpclmulqdq tme rdpid movdiri movdir64b fsrm md_clear serialize pco
+                             nfig arch_lbr ibt flush_l1d arch_capabilities ibpb_exit_to_user
+Virtualization features:
+  Virtualization:            VT-x
+Caches (sum of all):
+  L1d:                       544 KiB (14 instances)
+  L1i:                       704 KiB (14 instances)
+  L2:                        11.5 MiB (8 instances)
+  L3:                        24 MiB (1 instance)
+NUMA:
+  NUMA node(s):              1
+  NUMA node0 CPU(s):         0-19
+Vulnerabilities:
+  Gather data sampling:      Not affected
+  Indirect target selection: Not affected
+  Itlb multihit:             Not affected
+  L1tf:                      Not affected
+  Mds:                       Not affected
+  Meltdown:                  Not affected
+  Mmio stale data:           Not affected
+  Reg file data sampling:    Mitigation; Clear Register File
+  Retbleed:                  Not affected
+  Spec rstack overflow:      Not affected
+  Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+  Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+  Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence;
+                              BHI BHI_DIS_S
+  Srbds:                     Not affected
+  Tsa:                       Not affected
+  Tsx async abort:           Not affected
+  Vmscape:                   Mitigation; IBPB before exit to userspace
+
+
+ubuntu@ubuntu-llm:~$ lspci
+00:00.0 Host bridge: Intel Corporation Device 4640 (rev 02)
+00:02.0 VGA compatible controller: Intel Corporation AlderLake-S GT1 (rev 0c)
+00:0a.0 Signal processing controller: Intel Corporation Platform Monitoring Technology (rev 01)
+00:0e.0 RAID bus controller: Intel Corporation Volume Management Device NVMe RAID Controller
+00:14.0 USB controller: Intel Corporation Raptor Lake USB 3.2 Gen 2x2 (20 Gb/s) XHCI Host Controller (rev 11)
+00:14.2 RAM memory: Intel Corporation Raptor Lake-S PCH Shared SRAM (rev 11)
+00:14.3 Network controller: Intel Corporation Raptor Lake-S PCH CNVi WiFi (rev 11)
+00:15.0 Serial bus controller: Intel Corporation Raptor Lake Serial IO I2C Host Controller #0 (rev 11)
+00:15.1 Serial bus controller: Intel Corporation Raptor Lake Serial IO I2C Host Controller #1 (rev 11)
+00:15.2 Serial bus controller: Intel Corporation Raptor Lake Serial IO I2C Host Controller #2 (rev 11)
+00:16.0 Communication controller: Intel Corporation Raptor Lake CSME HECI #1 (rev 11)
+00:17.0 SATA controller: Intel Corporation Raptor Lake SATA AHCI Controller (rev 11)
+00:1a.0 PCI bridge: Intel Corporation Raptor Lake PCI Express Root Port #25 (rev 11)
+00:1c.0 PCI bridge: Intel Corporation Raptor Lake PCI Express Root Port #1 (rev 11)
+00:1c.2 PCI bridge: Intel Corporation Device 7a3a (rev 11)
+00:1d.0 PCI bridge: Intel Corporation Device 7a36 (rev 11)
+00:1f.0 ISA bridge: Intel Corporation Device 7a06 (rev 11)
+00:1f.3 Audio device: Intel Corporation Raptor Lake High Definition Audio Controller (rev 11)
+00:1f.4 SMBus: Intel Corporation Raptor Lake-S PCH SMBus Controller (rev 11)
+00:1f.5 Serial bus controller: Intel Corporation Raptor Lake SPI (flash) Controller (rev 11)
+03:00.0 Ethernet controller: Intel Corporation Ethernet Controller I226-V (rev 06)
+ubuntu@ubuntu-llm:~$
