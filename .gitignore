@@ -3,3 +3,4 @@ __pycache__/
 .streamlit/
 venv/
 .venv/
+.env

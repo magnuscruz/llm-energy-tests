@@ -36,10 +36,15 @@ LOG_DIR="$PROJECT_ROOT/logs/$(date +%Y-%m-%d)"
 WARMUP_DIR="${LOG_DIR}/warmup_logs"
 AGING_DIR="${LOG_DIR}/deep_aging"
 
-# Tapo P115 Config
-export TAPO_USER="magnuscruz@gmail.com"
-export TAPO_PASS="***REMOVIDO***"
-export TAPO_IP="192.168.0.200"
+# Tapo P115 Config - Load from .env file and export variables to child processes
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    set -a
+    source "$PROJECT_ROOT/.env"
+    set +a
+else
+    echo "Error: .env file not found at $PROJECT_ROOT/.env"
+    exit 1
+fi
 PYTHON_VENV="$PROJECT_ROOT/venv/bin/python3"
 
 
@@ -124,7 +129,8 @@ start_tapo_monitor() {
     local SAFE_MODEL=${2//:/_}
     local TIMESTAMP=$3
     local OUT_FILE="${TARGET_DIR}/${SAFE_MODEL}_${TIMESTAMP}_physical.csv"
-    $PYTHON_VENV tapo_monitor_temp.py > "$OUT_FILE" 2>/dev/null &
+    local ERR_FILE="${TARGET_DIR}/${SAFE_MODEL}_${TIMESTAMP}_physical.err"
+    $PYTHON_VENV tapo_monitor_temp.py > "$OUT_FILE" 2> "$ERR_FILE" &
     TAPO_PID=$!
 }
 
@@ -207,7 +213,7 @@ for MODEL in "${MODELS[@]}"; do
     LOG_FILE="$LOG_DIR/deep_aging/${MODEL//:/_}_${DURATION_HOURS}h_inference.csv"
     echo "Starting ${DURATION_HOURS}-hour continuous evaluation. Logging to $LOG_FILE"
 
-    start_tapo_monitor "$AGING_DIR" "$MODEL" "$DURATION_HOURS"h_aging
+    start_tapo_monitor "$AGING_DIR" "$MODEL" "$DURATION_HOURS"h
     run_inference_loop "$MODEL" "$LOG_FILE" "$DURATION_SECONDS" &
     INF_PID=$!
     wait $INF_PID
