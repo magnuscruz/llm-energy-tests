@@ -165,7 +165,20 @@ if df_filtered.empty:
 
 # Apply Smoothing
 if smoothing_window > 1:
-    numeric_cols = ["cpu_temp", "ram_used_mb", "decode_tps", "prefill_tps", "watts_mean", "eco_efficiency_ce", "tokens_per_joule"]
+    numeric_cols = [
+        col for col in [
+            "cpu_temp",
+            "ram_used_mb",
+            "scaling_cur_freq",
+            "freq_khz_max_mean",
+            "freq_khz_mean_mean",
+            "decode_tps",
+            "prefill_tps",
+            "watts_mean",
+            "eco_efficiency_ce",
+            "tokens_per_joule",
+        ] if col in df_filtered.columns
+    ]
     # Group by exact execution run to prevent smoothing across different tests
     df_filtered[numeric_cols] = df_filtered.groupby("Legend")[numeric_cols].transform(lambda x: x.rolling(smoothing_window, min_periods=1).mean())
 

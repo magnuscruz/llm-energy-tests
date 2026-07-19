@@ -63,6 +63,9 @@ mkdir -p "$AGING_DIR"
 cleanup() {
     echo "Interrupt received. Cleaning up..."
     pkill -f tapo_monitor_temp.py
+    if [ -n "${FREQ_PID:-}" ]; then
+        kill "$FREQ_PID" 2>/dev/null
+    fi
     # Forcibly unload both models from VRAM
     ollama stop ${MODELS} 2>/dev/null
     ollama stop ${MODELS} 2>/dev/null
@@ -134,6 +137,28 @@ start_tapo_monitor() {
     TAPO_PID=$!
 }
 
+start_freq_monitor() {
+    export TARGET_DIR=$1
+    local SAFE_MODEL=${2//:/_}
+    local TIMESTAMP=$3
+    local OUT_FILE="${TARGET_DIR}/${SAFE_MODEL}_${TIMESTAMP}_freq.csv"
+    nohup bash -c '
+        echo "timestamp,freq_khz_max,freq_khz_mean"
+        while true; do
+            freqs=$(cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq 2>/dev/null)
+            if [ -z "$freqs" ]; then
+                echo "$(date +%s),0,0"
+            else
+                max=$(printf "%s\n" $freqs | sort -n | tail -1)
+                mean=$(printf "%s\n" $freqs | awk "{s+=\\$1} END {printf \"%d\", s/NR}")
+                echo "$(date +%s),$max,$mean"
+            fi
+            sleep 1
+        done
+    ' > "$OUT_FILE" 2>/dev/null &
+    FREQ_PID=$!
+}
+
 # 6. Updated Phase-Aware Inference Loop
 run_inference_loop() {
     local model=$1
@@ -141,8 +166,8 @@ run_inference_loop() {
     local duration=$3
     local end_time=$(( $(date +%s) + duration ))
 
-    # New headers splitting Prefill and Decode phases
-    echo "timestamp,model,cpu_temp,ram_used_mb,prefill_tps,decode_tps,prefill_dur_s,decode_dur_s" > "$log_file"
+    # New headers splitting Prefill and Decode phases and adding current CPU clock
+    echo "timestamp,model,cpu_temp,ram_used_mb,scaling_cur_freq,prefill_tps,decode_tps,prefill_dur_s,decode_dur_s" > "$log_file"
 
     while [ $(date +%s) -lt $end_time ]; do
         local current_time=$(date +%s)
@@ -150,6 +175,7 @@ run_inference_loop() {
         # Capture System Metrics (using your existing top/free/sensors logic)
         local cpu_temp=$(sensors | awk '/Core 0/ {print $3}' | tr -d '+°C')
         local ram_used=$(free -m | awk '/Mem:/ {print $3}')
+        local scaling_cur_freq=$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)
 
         # Send request using your standard benchmark prompt
         local response=$(curl -s http://localhost:11434/api/generate -d '{
@@ -173,7 +199,7 @@ run_inference_loop() {
         local decode_dur_s=$(echo "scale=6; $decode_dur_ns / 1000000000" | bc)
 
         # Log the aggregated metrics
-        echo "$current_time,$model,$cpu_temp,$ram_used,$prefill_tps,$decode_tps,$prefill_dur_s,$decode_dur_s" >> "$log_file"
+        echo "$current_time,$model,$cpu_temp,$ram_used,$scaling_cur_freq,$prefill_tps,$decode_tps,$prefill_dur_s,$decode_dur_s" >> "$log_file"
     done
 }
 
@@ -195,10 +221,12 @@ for MODEL in "${MODELS[@]}"; do
     DURATION_HOURS=$(echo "scale=2; $DURATION_SECONDS / 3600" | bc)
 
     start_tapo_monitor "$WARMUP_DIR" "$MODEL" "$DURATION_HOURS"h_warmup
+    start_freq_monitor "$WARMUP_DIR" "$MODEL" "$DURATION_HOURS"h_warmup
     run_inference_loop "$MODEL" "$WARMUP_DIR/${MODEL//:/_}_warmup.csv" "$WARMUP_DURATION" &
     INF_PID=$!
     wait $INF_PID
     kill $TAPO_PID 2>/dev/null
+    kill $FREQ_PID 2>/dev/null
         
     echo "Warm-Up Complete. Starting ${DURATION_HOURS}-hour Continuous Evaluation for $MODEL..."
     
@@ -214,12 +242,14 @@ for MODEL in "${MODELS[@]}"; do
     echo "Starting ${DURATION_HOURS}-hour continuous evaluation. Logging to $LOG_FILE"
 
     start_tapo_monitor "$AGING_DIR" "$MODEL" "$DURATION_HOURS"h
+    start_freq_monitor "$AGING_DIR" "$MODEL" "$DURATION_HOURS"h
     run_inference_loop "$MODEL" "$LOG_FILE" "$DURATION_SECONDS" &
     INF_PID=$!
     wait $INF_PID
 
-    # Terminate the power logger and explicitly unload the model from VRAM
+    # Terminate the power and frequency loggers and explicitly unload the model from VRAM
     kill $TAPO_PID 2>/dev/null
+    kill $FREQ_PID 2>/dev/null
 
     # Clean up the model from memory to prevent interference with subsequent runs
     ollama stop "$MODEL" 2>/dev/null || docker stop ollama 2>/dev/null

@@ -1,3 +1,6 @@
+import glob
+import os
+
 import pandas as pd
 
 # Array of model names for which you want to perform the analysis
@@ -35,6 +38,34 @@ for model_name in model_names:
     # 4. Merge back into the main inference dataframe
     merged_df = pd.merge(df_inf, watts_mean, on='timestamp', how='left')
 
+    # Preserve CPU frequency telemetry for downstream analysis
+    if 'scaling_cur_freq' in merged_df.columns:
+        merged_df['scaling_cur_freq'] = pd.to_numeric(merged_df['scaling_cur_freq'], errors='coerce')
+
+    # 4b. Merge offline CPU frequency samples collected at 1Hz
+    freq_candidates = sorted(
+        glob.glob(f'*{model_name}*_freq.csv'),
+        key=os.path.getmtime,
+    )
+    if freq_candidates:
+        df_freq = pd.read_csv(freq_candidates[-1])
+        df_freq = df_freq.sort_values('timestamp').reset_index(drop=True)
+        for col in ['timestamp', 'freq_khz_max', 'freq_khz_mean']:
+            if col in df_freq.columns:
+                df_freq[col] = pd.to_numeric(df_freq[col], errors='coerce')
+
+        df_freq['inf_timestamp'] = pd.merge_asof(
+            df_freq[['timestamp']],
+            merged_df[['timestamp']].rename(columns={'timestamp': 'inf_timestamp'}),
+            left_on='timestamp',
+            right_on='inf_timestamp',
+            direction='backward'
+        )['inf_timestamp'].values
+
+        freq_summary = df_freq.groupby('inf_timestamp')[['freq_khz_max', 'freq_khz_mean']].mean().reset_index()
+        freq_summary.columns = ['timestamp', 'freq_khz_max_mean', 'freq_khz_mean_mean']
+        merged_df = pd.merge(merged_df, freq_summary, on='timestamp', how='left')
+
     # Calculate duration between consecutive inferences (in seconds)
     # Shift up so each row has the duration until the next inference
     merged_df['inference_duration_s'] = merged_df['timestamp'].diff().shift(-1)
@@ -64,4 +95,4 @@ for model_name in model_names:
     merged_df.to_csv(f'{model_name}_48.00h_merged_analysis.csv', index=False)
 
     # Preview the calculated columns
-    print(merged_df[['timestamp', 'decode_tps', 'watts_mean', 'tokens_per_joule', 'eco_efficiency_ce', 'response_time_s', 'prefill_dur_s', 'decode_dur_s']].head())
+    print(merged_df[['timestamp', 'decode_tps', 'watts_mean', 'scaling_cur_freq', 'freq_khz_max_mean', 'freq_khz_mean_mean', 'tokens_per_joule', 'eco_efficiency_ce', 'response_time_s', 'prefill_dur_s', 'decode_dur_s']].head())
