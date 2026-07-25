@@ -10,6 +10,8 @@ app_file: app.py
 pinned: false
 ---
 
+<!-- removed: browser cookie header pasted here in error -->
+
 # LLM Energy Tests: Software Aging & Carbon-Aware Resilience in Edge-Deployed LLMs
 
 Research benchmark framework investigating long-term sustainability of Large Language Models deployed on edge hardware under continuous workloads.

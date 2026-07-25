@@ -50,17 +50,7 @@ def load_telemetry_data(data_directory):
         else:
             architecture = "Unknown Model"
             
-        # 2. Parse Execution Scenario (from filename)
-        if "_R1_" in filename: 
-            scenario = "R1 (Pristine Ambient)"
-        elif "_R2_" in filename: 
-            scenario = "R2 (Thermal Anomaly)"
-        elif "throttle_87_5" in filename: 
-            scenario = "Throttled (87.5% Placebo Cap)"
-        else:
-            scenario = "Baseline"
-        
-        # 3. Parse Test Baseline from directory name
+        # 2. Parse Test Baseline from directory name
         # Traverse up directory tree to find the baseline directory (contains date prefix like "2026-05-01_")
         test_baseline = "Unknown"
         current_dir = file_dir
@@ -73,6 +63,25 @@ def load_telemetry_data(data_directory):
             current_dir = os.path.dirname(current_dir)
             if current_dir == os.path.dirname(current_dir):  # Reached root
                 break
+
+        # 3. Parse Execution Scenario from the resolved Test_Baseline (directory-derived).
+        # Every merged_analysis.csv shares the same filename across campaigns, so the
+        # previous filename-based detection always fell through to a single "Baseline"
+        # bucket, silently merging all throttling conditions into one legend entry.
+        if "_R1_" in test_baseline:
+            scenario = "R1 (Unthrottled)"
+        elif "_R2_" in test_baseline:
+            scenario = "R2 (Unthrottled, Replicate)"
+        elif "_87_5_" in test_baseline:
+            scenario = "Throttled (87.5%)"
+        elif "_75_" in test_baseline:
+            scenario = "Throttled (75%)"
+        elif "_62_5_" in test_baseline:
+            scenario = "Throttled (62.5%)"
+        elif "_50_" in test_baseline:
+            scenario = "Throttled (50%)"
+        else:
+            scenario = "Unknown"
             
         df["Architecture"] = architecture
         df["Scenario"] = scenario
@@ -116,7 +125,7 @@ selected_models = st.sidebar.multiselect(
 )
 
 scenario_options = df_master["Scenario"].unique()
-scenario_defaults = [s for s in ["R1 (Pristine Ambient)", "Throttled (87.5% Placebo Cap)"] if s in scenario_options]
+scenario_defaults = [s for s in ["R1 (Unthrottled)", "Throttled (87.5%)"] if s in scenario_options]
 # Fallback to first scenario if preferred defaults aren't available
 if not scenario_defaults and len(scenario_options) > 0:
     scenario_defaults = [scenario_options[0]]
