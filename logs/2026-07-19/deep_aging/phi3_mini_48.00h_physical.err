@@ -1,0 +1,1 @@
+Error in Tapo monitoring: Http(reqwest::Error { kind: Request, url: "http://192.168.0.200/app/request?seq=-1107891025", source: TimedOut })
