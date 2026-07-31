@@ -99,7 +99,7 @@ def main():
     fig.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, -0.02), ncol=2, frameon=False, fontsize=8.5)
     fig.suptitle("Detecting the Mis-Throttled 50% Campaign via a Compute-Bound Proxy", fontsize=11.5, y=0.995)
     fig.tight_layout(rect=[0, 0.06, 1, 0.97])
-    fig.savefig(os.path.join(OUT_DIR, "threats_mis_throttle_detection.png"), facecolor=SURFACE, bbox_inches="tight")
+    fig.savefig(os.path.join(OUT_DIR, "threats_mis_throttle_detection.pdf"), facecolor=SURFACE, bbox_inches="tight")
     plt.close(fig)
 
     print(f"{'Model':18s} {'Expected@1750':>14s} {'Observed':>10s} {'Implied MHz':>12s}")

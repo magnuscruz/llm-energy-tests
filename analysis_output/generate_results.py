@@ -30,12 +30,12 @@ MODEL_STYLE = {
 }
 
 CONDITION_STYLE = {
-    "R1":     {"label": "R1 (Unthrottled)",       "linestyle": "solid",             "lw": 1.6, "z": 5},
-    "R2":     {"label": "R2 (Unthrottled, rep.)", "linestyle": (0, (6, 2)),          "lw": 1.3, "z": 4},
-    "87_5":   {"label": "Throttled 87.5%",        "linestyle": (0, (1, 1)),          "lw": 1.4, "z": 3},
-    "75":     {"label": "Throttled 75%",          "linestyle": (0, (3, 1, 1, 1)),    "lw": 1.4, "z": 2},
-    "62_5":   {"label": "Throttled 62.5%",        "linestyle": (0, (5, 5)),          "lw": 1.4, "z": 1},
-    "50":     {"label": "Throttled 50%",          "linestyle": (0, (1, 1, 3, 1)),    "lw": 1.4, "z": 0},
+    "R1":     {"label": "R1 (Unthrottled)",       "linestyle": "solid",             "lw": 3.2, "z": 5},
+    "R2":     {"label": "R2 (Unthrottled, rep.)", "linestyle": (0, (6, 2)),          "lw": 2.6, "z": 4},
+    "87_5":   {"label": "Throttled 87.5%",        "linestyle": (0, (1, 1)),          "lw": 2.8, "z": 3},
+    "75":     {"label": "Throttled 75%",          "linestyle": (0, (3, 1, 1, 1)),    "lw": 2.8, "z": 2},
+    "62_5":   {"label": "Throttled 62.5%",        "linestyle": (0, (5, 5)),          "lw": 2.8, "z": 1},
+    "50":     {"label": "Throttled 50%",          "linestyle": (0, (1, 1, 3, 1)),    "lw": 2.8, "z": 0},
 }
 # Line-chart condition set (thermal/RAM/reproducibility figures): intentionally
 # excludes 50%, matching Section IV-A/IV-B's "all five conditions" grouping
@@ -94,8 +94,18 @@ plt.rcParams.update({
     "ytick.color": INK_MUTED,
     "grid.color": GRID,
     "font.family": "sans-serif",
-    "font.size": 10,
+    "font.size": 20,
+    "axes.titlesize": 22,
+    "axes.labelsize": 21,
+    "xtick.labelsize": 18,
+    "ytick.labelsize": 18,
+    "legend.fontsize": 17,
 })
+# Figures are exported as vector PDF and reproduced at single-column width
+# (\columnwidth) in the paper -- font/line sizes here are set ~2x a "normal"
+# on-screen figure so text stays legible after that shrink. Keep this in sync
+# with generate_threats_figure.py's sizing if that figure's own reproduction
+# width in threats/index.tex ever changes.
 
 
 def parse_condition(test_baseline):
@@ -161,12 +171,12 @@ def legend_handles(models, conditions):
     handles.append(Line2D([0], [0], color="none", label="Condition"))
     for c in conditions:
         st = CONDITION_STYLE[c]
-        handles.append(Line2D([0], [0], color=INK_SECONDARY, lw=1.6, linestyle=st["linestyle"], label=st["label"]))
+        handles.append(Line2D([0], [0], color=INK_SECONDARY, lw=2.8, linestyle=st["linestyle"], label=st["label"]))
     return handles
 
 
 def plot_pair_metric(df, model_a, model_b, metric_col, metric_label, out_name, conditions):
-    fig, ax = plt.subplots(figsize=(10, 5.5), dpi=150)
+    fig, ax = plt.subplots(figsize=(13, 7.2))
     sub = df[df.model_key.isin([model_a, model_b]) & df.condition.isin(conditions)]
     for model_key in [model_a, model_b]:
         color = MODEL_STYLE[model_key]["color"]
@@ -178,21 +188,21 @@ def plot_pair_metric(df, model_a, model_b, metric_col, metric_label, out_name, c
                 gg = gg.sort_values("Time (Hours)")
                 st = CONDITION_STYLE[cond]
                 ax.plot(gg["Time (Hours)"], gg[metric_col], color=color,
-                        linestyle=st["linestyle"], linewidth=st["lw"], alpha=0.95, zorder=st["z"])
+                        linestyle=st["linestyle"], linewidth=st["lw"], alpha=1.0, zorder=st["z"])
 
     ax.set_xlabel("Time (Hours)")
     ax.set_ylabel(metric_label)
-    ax.grid(True, linewidth=0.6, alpha=0.8)
+    ax.grid(True, linewidth=0.8, alpha=0.8)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
     title = f"{MODEL_STYLE[model_a]['label']} vs {MODEL_STYLE[model_b]['label']} — {metric_label}"
-    ax.set_title(title, fontsize=12, color=INK_PRIMARY, pad=12)
+    ax.set_title(title, fontsize=22, color=INK_PRIMARY, pad=18)
 
     handles = legend_handles([model_a, model_b], conditions)
     ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-              frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY)
+              frameon=False, fontsize=17, labelcolor=INK_SECONDARY)
     fig.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, f"{out_name}.png"), facecolor=SURFACE, bbox_inches="tight")
+    fig.savefig(os.path.join(OUT_DIR, f"{out_name}.pdf"), facecolor=SURFACE, bbox_inches="tight")
     plt.close(fig)
     print("wrote", out_name)
 
@@ -207,7 +217,7 @@ def plot_bar_summary(df, metric_col, ylabel, out_name):
     models = list(MODEL_STYLE.keys())
     summary = df.groupby(["model_key", "condition"])[metric_col].mean().reset_index()
 
-    fig, ax = plt.subplots(figsize=(11, 5.5), dpi=150)
+    fig, ax = plt.subplots(figsize=(14, 7.2))
     n_cond = len(conditions)
     width = 0.8 / n_cond
     x = range(len(models))
@@ -219,19 +229,20 @@ def plot_bar_summary(df, metric_col, ylabel, out_name):
         offsets = [xi + (i - n_cond / 2) * width + width / 2 for xi in x]
         ax.bar(offsets, vals, width=width * 0.92,
                color=CONDITION_BAR_COLOR[cond],
-               edgecolor=INK_PRIMARY, linewidth=0.4,
+               edgecolor=INK_PRIMARY, linewidth=0.8,
                label=CONDITION_STYLE[cond]["label"])
 
     ax.set_xticks(list(x))
-    ax.set_xticklabels([MODEL_STYLE[m]["label"] for m in models], rotation=0, fontsize=9)
+    wrapped_labels = [MODEL_STYLE[m]["label"].replace(" (", "\n(") for m in models]
+    ax.set_xticklabels(wrapped_labels, rotation=0, ha="center", fontsize=16)
     ax.set_ylabel(ylabel)
-    ax.grid(True, axis="y", linewidth=0.6, alpha=0.8)
+    ax.grid(True, axis="y", linewidth=0.8, alpha=0.8)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
-    ax.set_title(ylabel, fontsize=12, color=INK_PRIMARY, pad=12)
-    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), frameon=False, fontsize=8.5, labelcolor=INK_SECONDARY)
+    ax.set_title(ylabel, fontsize=22, color=INK_PRIMARY, pad=18)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), frameon=False, fontsize=17, labelcolor=INK_SECONDARY)
     fig.tight_layout()
-    fig.savefig(os.path.join(OUT_DIR, f"{out_name}.png"), facecolor=SURFACE, bbox_inches="tight")
+    fig.savefig(os.path.join(OUT_DIR, f"{out_name}.pdf"), facecolor=SURFACE, bbox_inches="tight")
     plt.close(fig)
     print("wrote", out_name)
 
