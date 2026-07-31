@@ -38,6 +38,9 @@ plt.rcParams.update({
     "text.color": INK_PRIMARY, "xtick.color": INK_MUTED, "ytick.color": INK_MUTED,
     "grid.color": GRID, "font.family": "sans-serif", "font.size": 10,
 })
+# This figure is reproduced at full \textwidth (figure*, spanning both columns)
+# in the paper. If it is ever switched to single-column width instead, double
+# these font/line/marker sizes to stay legible after the shrink.
 
 
 def prefill_mean(directory, model_key):

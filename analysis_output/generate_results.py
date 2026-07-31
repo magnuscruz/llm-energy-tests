@@ -10,10 +10,17 @@ import pandas as pd
 LOGS_DIR = os.path.join(os.path.dirname(__file__), "..", "logs")
 OUT_DIR = os.path.dirname(__file__)
 
-# The 50% campaign currently on disk (logs/2026-07-11_48h_50_throttling) is the
-# pre-hardened-protocol run: effective frequency ~2.4GHz vs the 1.75GHz cap ladder
-# (see threats/index.tex in IEEETransactions). Excluded here, same as the paper.
-EXCLUDED_BASELINES = {"48h_50_throttling"}
+# logs/2026-07-11_48h_50_throttling is the original, pre-hardened-protocol 50%
+# run: effective frequency ~2.4GHz vs the 1.75GHz cap ladder (see threats/index.tex
+# in IEEETransactions). Its replacement, logs/2026-07-19_48h_50_throttling, is the
+# valid hardened-protocol re-execution and must NOT be excluded.
+#
+# Both folders strip down to the identical test_baseline "48h_50_throttling" (the
+# date prefix is removed), so excluding by that stripped string would silently
+# drop BOTH campaigns or, if the exclusion set were emptied naively, merge the
+# invalid and valid runs together under one condition label. Exclude by the full,
+# date-qualified campaign folder name instead.
+EXCLUDED_CAMPAIGNS = {"2026-07-11_48h_50_throttling"}
 
 MODEL_STYLE = {
     "llama3.1_8b":      {"label": "Llama 3.1 8B (Dense)",       "color": "#2a78d6"},
@@ -28,18 +35,34 @@ CONDITION_STYLE = {
     "87_5":   {"label": "Throttled 87.5%",        "linestyle": (0, (1, 1)),          "lw": 1.4, "z": 3},
     "75":     {"label": "Throttled 75%",          "linestyle": (0, (3, 1, 1, 1)),    "lw": 1.4, "z": 2},
     "62_5":   {"label": "Throttled 62.5%",        "linestyle": (0, (5, 5)),          "lw": 1.4, "z": 1},
+    "50":     {"label": "Throttled 50%",          "linestyle": (0, (1, 1, 3, 1)),    "lw": 1.4, "z": 0},
 }
+# Line-chart condition set (thermal/RAM/reproducibility figures): intentionally
+# excludes 50%, matching Section IV-A/IV-B's "all five conditions" grouping
+# (R1, R2, and the three original throttled points), which predates and is
+# distinct from the 50%-inclusive set reported in Table III.
 CONDITION_ORDER = ["R1", "R2", "87_5", "75", "62_5"]
 
-# Ordinal sequential ramp (one hue, light->dark), validated with
-# scripts/validate_palette.js --ordinal (dataviz skill, palette.md).
+# Superset used only for classifying rows while loading data (includes 50%,
+# needed for the bar-chart / Table III condition set below).
+ALL_CONDITIONS = CONDITION_ORDER + ["50"]
+
+# Ordinal sequential ramp (one hue, light->dark) for the 5 bar-chart conditions
+# (R1, 87.5, 75, 62.5, 50 -- no R2). Validated with scripts/validate_palette.js
+# --ordinal (dataviz skill, palette.md); the previous 5-color set (which included
+# R2 instead of 50) does not directly reuse these steps, since swapping one entry
+# for a darker one changed which spacing clears the adjacent-gap floor.
 CONDITION_BAR_COLOR = {
     "R1":    "#86b6ef",
-    "R2":    "#5598e7",
-    "87_5":  "#2a78d6",
-    "75":    "#1c5cab",
-    "62_5":  "#104281",
+    "87_5":  "#3987e5",
+    "75":    "#256abf",
+    "62_5":  "#184f95",
+    "50":    "#0d366b",
 }
+
+# Bar-chart condition set: mirrors Table III exactly (R1 + all four throttled
+# points, no R2 replicate).
+BAR_CONDITIONS = ["R1", "87_5", "75", "62_5", "50"]
 
 PAIRS = [
     ("llama3.1_8b", "deepseek-v2_lite", "pair_llama_deepseek"),
@@ -76,8 +99,8 @@ plt.rcParams.update({
 
 
 def parse_condition(test_baseline):
-    for key in CONDITION_ORDER:
-        marker = f"_{key}_" if key not in ("R1", "R2") else f"_{key}_"
+    for key in ALL_CONDITIONS:
+        marker = f"_{key}_"
         if marker in f"_{test_baseline}_":
             return key
     return None
@@ -93,17 +116,19 @@ def load_all():
             continue
 
         test_baseline = "Unknown"
+        campaign_folder = None
         current_dir = os.path.dirname(f)
         for _ in range(5):
             dir_basename = os.path.basename(current_dir)
             if dir_basename and "_" in dir_basename and any(c.isdigit() for c in dir_basename.split("_")[0]):
+                campaign_folder = dir_basename
                 test_baseline = "_".join(dir_basename.split("_")[1:])
                 break
             parent = os.path.dirname(current_dir)
             if parent == current_dir:
                 break
             current_dir = parent
-        if test_baseline in EXCLUDED_BASELINES:
+        if campaign_folder in EXCLUDED_CAMPAIGNS:
             continue
         condition = parse_condition(test_baseline)
         if condition is None:
@@ -178,7 +203,7 @@ def plot_reproducibility(df, model_a, model_b, out_name):
 
 
 def plot_bar_summary(df, metric_col, ylabel, out_name):
-    conditions = ["R1", "R2", "87_5", "75", "62_5"]
+    conditions = BAR_CONDITIONS
     models = list(MODEL_STYLE.keys())
     summary = df.groupby(["model_key", "condition"])[metric_col].mean().reset_index()
 
