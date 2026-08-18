@@ -178,57 +178,68 @@ def thermal_macros(d):
     }
 
 
+# Conditions re-executed as independent replications. Each entry is
+#   (macro tag, original campaign, replication campaign, nominal cap in MHz).
+# The replication is deliberately NOT merged into combined_dataset.csv: Table III
+# and every figure keep the original campaign as the reported condition. Both
+# campaigns are read from their raw per-event merged_analysis files, unsmoothed,
+# so the comparison is like-for-like -- combined_dataset.csv carries a 60-sample
+# moving average and is not directly comparable to these numbers.
+#
+# Each replication is also the first run of its condition to carry 1 Hz frequency
+# telemetry, so it supplies that condition's empirical cap verification.
+# Add the 87.5% pair here once its replication campaign lands; nothing else
+# needs to change.
+REPLICATIONS = [
+    ("SixtyTwoFive", "2026-07-02_48h_62_5_throttling",
+     "2026-07-27_48h_62_5_throttling", 2188.0),
+    ("SeventyFive", "2026-06-14_48h_75_throttling",
+     "2026-08-08_48h_75_throttling", 2625.0),
+]
+
+
 def replication_macros():
-    """The 2026-07-27 re-execution of the 62.5% condition.
-
-    Reported as a replication only: it is deliberately NOT merged into
-    combined_dataset.csv, so Table III and every figure keep the 2026-07-02
-    campaign as the 62.5% condition. Both campaigns are read here from their
-    raw per-event merged_analysis files, unsmoothed, so the comparison is
-    like-for-like -- combined_dataset.csv carries a 60-sample moving average
-    and its values are therefore not directly comparable to these.
-
-    This campaign is the first at 62.5% to carry 1 Hz frequency telemetry,
-    so it also supplies the empirical cap verification for that condition.
-    """
-    old_dir = os.path.join(REPO, "logs", "2026-07-02_48h_62_5_throttling", "deep_aging")
-    new_dir = os.path.join(REPO, "logs", "2026-07-27_48h_62_5_throttling", "deep_aging")
-    cap_mhz = 2188.0
-
-    def load(base, key):
-        p = os.path.join(base, f"{key}_48.00h_merged_analysis.csv")
+    """Per-condition replication agreement, drift, and cap verification."""
+    def load(folder, key):
+        p = os.path.join(REPO, "logs", folder, "deep_aging",
+                         f"{key}_48.00h_merged_analysis.csv")
         return pd.read_csv(p, low_memory=False)
 
-    def ols(d):
-        s = d[["timestamp", TPS]].dropna()
-        t = (s.timestamp - s.timestamp.min()) / 3600.0
-        return ols_drift_pct(t.to_numpy(), s[TPS].to_numpy())
-
-    def endpt(d):
+    def drift(d, fn):
         s = d[["timestamp", TPS]].dropna()
         t = ((s.timestamp - s.timestamp.min()) / 3600.0).to_numpy()
-        return endpoint_pct(t, s[TPS].to_numpy())
+        return fn(t, s[TPS].to_numpy())
 
     out = {}
-    stable_deltas, cap_means = [], []
-    for name, key in MODELS.items():
-        o, n = load(old_dir, key), load(new_dir, key)
-        delta = 100 * (n.tokens_per_joule.mean() / o.tokens_per_joule.mean() - 1)
-        out[f"rep{name}"] = f"{delta:.1f}"
-        if name != "Phi":
-            stable_deltas.append(abs(delta))
-        f = n.freq_khz_max_mean.dropna() / 1000.0
-        cap_means.append(f.mean())
-        if name == "Phi":
-            out["repPhiOldOls"] = f"{ols(o):.1f}"
-            out["repPhiNewOls"] = f"{ols(n):.1f}"
-            out["repPhiOldObs"] = f"{endpt(o):.1f}"
-            out["repPhiNewObs"] = f"{endpt(n):.1f}"
+    all_deltas, stable_deltas = [], []
 
+    for tag, old_folder, new_folder, cap in REPLICATIONS:
+        deltas, cap_means = {}, []
+        for name, key in MODELS.items():
+            o, n = load(old_folder, key), load(new_folder, key)
+            d = 100 * (n.tokens_per_joule.mean() / o.tokens_per_joule.mean() - 1)
+            deltas[name] = d
+            all_deltas.append(abs(d))
+            if name != "Phi":
+                stable_deltas.append(abs(d))
+            cap_means.append(n.freq_khz_max_mean.dropna().mean() / 1000.0)
+            if name == "Phi":
+                out[f"repPhi{tag}OldOls"] = f"{drift(o, ols_drift_pct):.1f}"
+                out[f"repPhi{tag}NewOls"] = f"{drift(n, ols_drift_pct):.1f}"
+                out[f"repPhi{tag}OldObs"] = f"{drift(o, endpoint_pct):.1f}"
+                out[f"repPhi{tag}NewObs"] = f"{drift(n, endpoint_pct):.1f}"
+
+        out[f"rep{tag}Max"] = f"{max(abs(v) for v in deltas.values()):.1f}"
+        out[f"cap{tag}Lo"] = r(min(cap_means))
+        out[f"cap{tag}Hi"] = r(max(cap_means))
+        out[f"cap{tag}Pct"] = r(100 * (sum(cap_means) / len(cap_means)) / cap)
+        # Individual model deltas, kept for the 62.5% pair the prose enumerates.
+        for name, d in deltas.items():
+            out[f"rep{tag}{name}"] = f"{d:.1f}"
+
+    out["repAllMax"] = f"{max(all_deltas):.1f}"
     out["repStableMax"] = f"{max(stable_deltas):.1f}"
-    out["capSixtyTwoFiveLo"] = r(min(cap_means))
-    out["capSixtyTwoFiveHi"] = r(max(cap_means))
-    out["capSixtyTwoFivePct"] = r(100 * (sum(cap_means) / len(cap_means)) / cap_mhz)
+    out["repConditions"] = str(len(REPLICATIONS))
     return out
 
 
