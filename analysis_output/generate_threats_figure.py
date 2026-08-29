@@ -11,7 +11,7 @@ OUT_DIR = os.path.dirname(__file__)
 VALID_DIRS = {
     "62.5%": (f"{LOGS_DIR}/2026-07-02_48h_62_5_throttling/deep_aging", 2188),
     "75%":   (f"{LOGS_DIR}/2026-06-14_48h_75_throttling/deep_aging", 2625),
-    "87.5%": (f"{LOGS_DIR}/2026-05-20_48h_87_5_throttling/deep_aging", 3063),
+    "87.5%": (f"{LOGS_DIR}/2026-08-18_48h_87_5_throttling/deep_aging", 3063),
 }
 R1_DIR = f"{LOGS_DIR}/2026-05-09_48h_R2_no_throtting/deep_aging"
 INVALID_50_DIR = f"{LOGS_DIR}/2026-07-11_48h_50_throttling/deep_aging"

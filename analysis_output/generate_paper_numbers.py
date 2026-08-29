@@ -25,6 +25,20 @@ OUT = os.path.join(PAPER, "numbers.tex")
 # hardened re-execution is 2026-07-19. Never mix them.
 INVALID_CAMPAIGN = "2026-07-11_48h_50_throttling"
 
+# The six campaigns behind the five reported conditions. Must stay in step with
+# EXCLUDED_CAMPAIGNS in generate_results.py, which builds combined_dataset.csv:
+# 2026-05-20 (87.5%) was silently mis-throttled and is superseded by 2026-08-18,
+# and the 62.5%/75% replications are reported separately, not as conditions.
+REPORTED_CAMPAIGNS = [
+    "2026-05-01_48h_R1_no_throtting",   # R1: llama, deepseek
+    "2026-05-05_48h_R1_no_throtting",   # R1: qwen, phi3
+    "2026-08-18_48h_87_5_throttling",
+    "2026-06-14_48h_75_throttling",
+    "2026-07-02_48h_62_5_throttling",
+    "2026-07-19_48h_50_throttling",
+]
+R2_CAMPAIGN = "2026-05-09_48h_R2_no_throtting"
+
 HOURS = "Time (Hours)"
 TPS = "decode_tps"
 
@@ -144,38 +158,54 @@ def phi_decline_macros(d):
 
 
 def volume_macros():
-    """Dataset volume, counted from the RAW files.
+    """Dataset volume for the five REPORTED conditions, counted from raw files.
 
-    combined_dataset.csv drops rows with NaN power (14 for DeepSeek@87.5%,
-    1105 for Phi-3@50%), so counting there understates the campaign.
+    Counts only the campaigns that actually feed combined_dataset.csv. Globbing
+    every logs/*_48h_*/ folder instead would count nine campaigns and
+    double-count three conditions, because the superseded 87.5% mis-throttle and
+    the 62.5%/75% replications also live there -- an error that put the reported
+    event total 63% above the sum of Table II's own cells.
+
+    combined_dataset.csv is not used here: it drops rows whose power sample is
+    missing (14 for DeepSeek@87.5%, 1105 for Phi-3@50%), understating the count.
     """
-    def count(pattern, skip_r2):
+    def count(pattern, campaigns):
         total = 0
-        for f in glob.glob(os.path.join(REPO, "logs", "*_48h_*", "deep_aging", pattern)):
-            if INVALID_CAMPAIGN in f or (skip_r2 and "_R2_" in f):
-                continue
-            total += sum(1 for _ in open(f)) - 1
+        for c in campaigns:
+            for f in glob.glob(os.path.join(REPO, "logs", c, "deep_aging", pattern)):
+                total += sum(1 for _ in open(f)) - 1
         return total
 
+    events = count("*_merged_analysis.csv", REPORTED_CAMPAIGNS)
+    # Power samples include the R2 replicate, which the surrounding prose
+    # introduces alongside the five conditions.
+    power = count("*_physical.csv", REPORTED_CAMPAIGNS + [R2_CAMPAIGN])
     return {
-        "totalEvents": f"{count('*_merged_analysis.csv', True):,}".replace(",", "{,}"),
-        "totalPowerSamples": f"{count('*_physical.csv', False) / 1e6:.1f}",
+        "totalEvents": f"{events:,}".replace(",", "{,}"),
+        "totalPowerSamples": f"{power / 1e6:.1f}",
     }
 
 
 def thermal_macros(d):
-    """Hot/cool temperature shelves, equal weight per model x condition."""
-    hot = d[d.condition.isin(["R1", "R2", "87_5"])].groupby(
-        ["model_key", "condition"]).cpu_temp.mean()
-    cool = d[d.condition.isin(["75", "62_5"])].groupby(
-        ["model_key", "condition"]).cpu_temp.mean()
-    return {
-        "shelfHotLo": r(hot.min()),
-        "shelfHotHi": r(hot.max()),
-        "shelfCoolLo": r(cool.min()),
-        "shelfCoolHi": r(cool.max()),
-        "shelfGap": r(hot.mean() - cool.mean()),
-    }
+    """Per-condition temperature range, as per-model means.
+
+    Earlier drafts described a two-shelf structure, with 87.5% grouped alongside
+    the unthrottled runs. That grouping was an artifact of the mis-throttled
+    2026-05-20 campaign: once replaced by its verified re-execution, temperature
+    falls monotonically with the cap and the shelves resolve into a gradient.
+    """
+    out = {}
+    for cond, tag in COND_NAME.items():
+        s = d[d.condition == cond].groupby("model_key").cpu_temp.mean()
+        if s.empty:
+            continue
+        out[f"temp{tag}Lo"] = r(s.min())
+        out[f"temp{tag}Hi"] = r(s.max())
+    # Total span from the unthrottled reference down to the tightest cap.
+    unthrottled = d[d.condition == "R1"].groupby("model_key").cpu_temp.mean().mean()
+    tightest = d[d.condition == "50"].groupby("model_key").cpu_temp.mean().mean()
+    out["tempTotalDrop"] = r(unthrottled - tightest)
+    return out
 
 
 # Conditions re-executed as independent replications. Each entry is
@@ -196,6 +226,18 @@ REPLICATIONS = [
     ("SeventyFive", "2026-06-14_48h_75_throttling",
      "2026-08-08_48h_75_throttling", 2625.0),
 ]
+
+# The 87.5% condition is deliberately NOT listed above. Its original campaign
+# (2026-05-20) was silently mis-throttled, so comparing it against the verified
+# 2026-08-18 re-execution measures a protocol failure, not run-to-run
+# reproducibility -- the two are not replicates of the same condition. The
+# verified campaign simply replaces the original in combined_dataset.csv
+# (see EXCLUDED_CAMPAIGNS in generate_results.py); the discrepancy between them
+# is reported in the Threats to Validity section instead.
+MISTHROTTLED = {
+    "EightySevenFive": ("2026-05-20_48h_87_5_throttling",
+                        "2026-08-18_48h_87_5_throttling", 3063.0),
+}
 
 
 def replication_macros():
@@ -240,6 +282,26 @@ def replication_macros():
     out["repAllMax"] = f"{max(all_deltas):.1f}"
     out["repStableMax"] = f"{max(stable_deltas):.1f}"
     out["repConditions"] = str(len(REPLICATIONS))
+
+    # The mis-throttled 87.5% campaign, quantified for Threats to Validity:
+    # how far the superseded run departs from its verified replacement.
+    for tag, (old_folder, new_folder, cap) in MISTHROTTLED.items():
+        pw, tj, tmp, caps = [], [], [], []
+        for key in MODELS.values():
+            o, n = load(old_folder, key), load(new_folder, key)
+            pw.append(100 * (o.watts_mean.mean() / n.watts_mean.mean() - 1))
+            tj.append(100 * (n.tokens_per_joule.mean() / o.tokens_per_joule.mean() - 1))
+            tmp.append(o.cpu_temp.mean() - n.cpu_temp.mean())
+            caps.append(n.freq_khz_max_mean.dropna().mean() / 1000.0)
+        out[f"bad{tag}PowerLo"] = r(min(pw))
+        out[f"bad{tag}PowerHi"] = r(max(pw))
+        out[f"bad{tag}TempLo"] = r(min(tmp))
+        out[f"bad{tag}TempHi"] = r(max(tmp))
+        out[f"bad{tag}TjLo"] = r(min(tj))
+        out[f"bad{tag}TjHi"] = r(max(tj))
+        out[f"cap{tag}Lo"] = r(min(caps))
+        out[f"cap{tag}Hi"] = r(max(caps))
+        out[f"cap{tag}Pct"] = r(100 * (sum(caps) / len(caps)) / cap)
     return out
 
 

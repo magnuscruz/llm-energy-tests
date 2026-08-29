@@ -20,7 +20,25 @@ OUT_DIR = os.path.dirname(__file__)
 # drop BOTH campaigns or, if the exclusion set were emptied naively, merge the
 # invalid and valid runs together under one condition label. Exclude by the full,
 # date-qualified campaign folder name instead.
-EXCLUDED_CAMPAIGNS = {"2026-07-11_48h_50_throttling"}
+#
+# 2026-05-20_48h_87_5_throttling is a SECOND silently mis-throttled campaign,
+# found the same way as the 50% one. Its prefill throughput sits at ~0.95 of the
+# unthrottled reference, off the regular ladder traced by the three verified
+# campaigns (87.5% -> 0.87, 75% -> 0.80, 62.5% -> 0.70), and it drew ~28% more
+# power and ran ~8 degC hotter than the verified 87.5% re-execution. It predates
+# continuous frequency logging, so nothing in its own telemetry contradicts the
+# nominal cap. 2026-08-18_48h_87_5_throttling replaces it as the 87.5% condition.
+#
+# The 62.5% and 75% replications are excluded for a different reason: they are
+# valid, but they duplicate a condition already represented by its original
+# campaign. Including them would merge two runs under one condition label.
+# They are analyzed separately by generate_paper_numbers.py.
+EXCLUDED_CAMPAIGNS = {
+    "2026-07-11_48h_50_throttling",
+    "2026-05-20_48h_87_5_throttling",
+    "2026-07-27_48h_62_5_throttling",
+    "2026-08-08_48h_75_throttling",
+}
 
 MODEL_STYLE = {
     "llama3.1_8b":      {"label": "Llama 3.1 8B (Dense)",       "color": "#2a78d6"},
