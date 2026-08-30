@@ -128,6 +128,12 @@ verify_throttling() {
         echo "epp=${epp}"
         echo "ollama_version=$(ollama --version 2>/dev/null | head -1)"
         echo "kernel=$(uname -r)"
+        # Model digests, one line per model. Without them, a change to a model
+        # snapshot between campaigns is indistinguishable from any other change,
+        # and a difference in behaviour months apart cannot be attributed.
+        # "ollama list" prints the digest prefix in its ID column.
+        ollama list 2>/dev/null | awk 'NR>1 && $1!="" {
+            name=$1; gsub(/[:.\/]/,"_",name); print "model_digest_" name "=" $2 }'
     } >> "$LOG_DIR/run_config.log"
     if [ "$THROTTLE_ENABLED" = true ] && [ "$p_max" != "$CAP_FREQ" ]; then
         echo "[-] FATAL: applied cap (${p_max}) != requested cap (${CAP_FREQ}). Aborting."
