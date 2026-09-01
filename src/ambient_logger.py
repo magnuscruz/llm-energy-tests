@@ -23,10 +23,15 @@ Mount the sensor on a lead, well away from both this Pi and the exhaust of the
 node under test. A sensor sitting on warm hardware measures the hardware.
 """
 import argparse
+import math
+import random
 import struct
 import time
 
-from smbus2 import SMBus, i2c_msg
+try:
+    from smbus2 import SMBus, i2c_msg
+except ImportError:                      # --simulate needs no I2C stack
+    SMBus = i2c_msg = None
 
 I2C_BUS = 1
 ADDR_DEFAULT = 0x44          # 0x45 if the ADDR pad is pulled high
@@ -60,6 +65,30 @@ def read_sample(bus: SMBus, addr: int):
     return (-45 + 175 * t_raw / 65535.0, 100 * h_raw / 65535.0)
 
 
+class FakeSensor:
+    """Plausible readings, so the logger and the fusion step can be exercised
+    end to end before the hardware exists.
+
+    Everything downstream of the I2C read -- schema, epoch stamping, cadence,
+    the merge_asof join -- is worth validating on its own. Waiting for the
+    sensor to test the pipeline means discovering pipeline bugs during a
+    48-hour campaign, which is when they are most expensive.
+
+    A slow diurnal swing plus per-sample noise; the point is realistic shape,
+    not physical fidelity.
+    """
+
+    def __init__(self, base_c=22.0, swing_c=2.5, base_rh=55.0):
+        self.base_c, self.swing_c, self.base_rh = base_c, swing_c, base_rh
+        self.t0 = time.time()
+
+    def read(self):
+        hours = (time.time() - self.t0) / 3600.0
+        drift = self.swing_c * math.sin(2 * math.pi * hours / 24.0)
+        return (self.base_c + drift + random.gauss(0, 0.05),
+                self.base_rh - drift * 2 + random.gauss(0, 0.3))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("output", help="CSV path to append to")
@@ -67,7 +96,22 @@ def main():
                    help="seconds between samples (default: 1.0)")
     p.add_argument("--address", type=lambda x: int(x, 0), default=ADDR_DEFAULT,
                    help="I2C address, 0x44 or 0x45 (default: 0x44)")
+    p.add_argument("--simulate", action="store_true",
+                   help="emit synthetic readings; no sensor or I2C stack needed")
     args = p.parse_args()
+
+    if args.simulate:
+        fake = FakeSensor()
+        with open(args.output, "a", buffering=1) as fh:
+            if fh.tell() == 0:
+                fh.write("timestamp,ambient_c,humidity_pct\n")
+            next_at = time.time()
+            while True:
+                t, h = fake.read()
+                fh.write(f"{int(time.time())},{t:.2f},{h:.2f}\n")
+                next_at += args.interval
+                time.sleep(max(0.0, next_at - time.time()))
+        return
 
     with SMBus(I2C_BUS) as bus, open(args.output, "a", buffering=1) as fh:
         if fh.tell() == 0:

@@ -1,0 +1,33 @@
+# Ambient logger as a service, so it survives reboots and starts unattended.
+#
+# Install on the Raspberry Pi:
+#   sudo cp ambient-logger.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now ambient-logger
+#   journalctl -u ambient-logger -f
+#
+# Adjust User, WorkingDirectory and the output path before enabling.
+
+[Unit]
+Description=Out-of-band ambient temperature and humidity logger
+# The log is timestamped in UNIX epoch and fused by that, so a wrong clock
+# corrupts the data silently. Wait for NTP rather than logging from a Pi that
+# has just booted without an RTC and believes it is 1970.
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/llm-energy-tests
+ExecStart=/usr/bin/python3 src/ambient_logger.py /home/pi/ambient.csv --interval 1
+Restart=always
+RestartSec=10
+# The logger appends and never rewrites, so a restart costs at most the samples
+# taken while it was down. Those show up as a gap, which is honest; imputing
+# them would not be.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
