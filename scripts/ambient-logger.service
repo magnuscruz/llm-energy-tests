@@ -6,7 +6,11 @@
 #   sudo systemctl enable --now ambient-logger
 #   journalctl -u ambient-logger -f
 #
-# Adjust User, WorkingDirectory and the output path before enabling.
+# Values below match the deployment: user magnuspi, sparse checkout in
+# ~/ambient, log written to ~/ambient.csv. Adjust if yours differs.
+#
+# Note the two paths are deliberately distinct: ~/ambient is the checkout,
+# ~/ambient.csv is the data. Deleting the former never touches the latter.
 
 [Unit]
 Description=Out-of-band ambient temperature and humidity logger
@@ -18,9 +22,9 @@ Wants=network-online.target time-sync.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/llm-energy-tests
-ExecStart=/usr/bin/python3 src/ambient_logger.py /home/pi/ambient.csv --interval 1
+User=magnuspi
+WorkingDirectory=/home/magnuspi/ambient
+ExecStart=/usr/bin/python3 src/ambient_logger.py /home/magnuspi/ambient.csv --interval 1
 Restart=always
 RestartSec=10
 # The logger appends and never rewrites, so a restart costs at most the samples

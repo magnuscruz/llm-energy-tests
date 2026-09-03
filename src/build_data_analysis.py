@@ -66,6 +66,44 @@ for model_name in model_names:
         freq_summary.columns = ['timestamp', 'freq_khz_max_mean', 'freq_khz_mean_mean']
         merged_df = pd.merge(merged_df, freq_summary, on='timestamp', how='left')
 
+    # 4c. Merge ambient temperature and humidity, if the room was instrumented.
+    #
+    # Unlike power and frequency, ambient is logged once for the whole campaign
+    # rather than per model: a single sensor watches the room while the models
+    # run in sequence. merge_asof handles that without slicing, because it joins
+    # on the timestamp -- each model's rows pick up the readings from its own
+    # window automatically.
+    #
+    # The stream comes from a separate machine (a Pi beside the node), so it is
+    # only comparable because both anchor to the UNIX epoch. Verify the clocks
+    # agree before a campaign: scripts/sync_pi_clock.sh. A Pi has no RTC, and a
+    # drifting clock pairs readings with the wrong inference events silently.
+    ambient_files = sorted(glob.glob('*ambient*.csv'), key=os.path.getmtime)
+    if ambient_files:
+        df_amb = pd.read_csv(ambient_files[-1])
+        df_amb = df_amb.sort_values('timestamp').reset_index(drop=True)
+        for col in ['timestamp', 'ambient_c', 'humidity_pct']:
+            if col in df_amb.columns:
+                df_amb[col] = pd.to_numeric(df_amb[col], errors='coerce')
+        df_amb = df_amb.dropna(subset=['timestamp'])
+
+        df_amb['inf_timestamp'] = pd.merge_asof(
+            df_amb[['timestamp']],
+            merged_df[['timestamp']].rename(columns={'timestamp': 'inf_timestamp'}),
+            left_on='timestamp',
+            right_on='inf_timestamp',
+            direction='backward'
+        )['inf_timestamp'].values
+
+        amb_summary = df_amb.groupby('inf_timestamp')[['ambient_c', 'humidity_pct']].mean().reset_index()
+        amb_summary.columns = ['timestamp', 'ambient_c_mean', 'humidity_pct_mean']
+        merged_df = pd.merge(merged_df, amb_summary, on='timestamp', how='left')
+
+        covered = merged_df['ambient_c_mean'].notna().mean() * 100
+        print(f"  ambient: {ambient_files[-1]} -> {covered:.1f}% of inference events covered")
+    else:
+        print("  ambient: no *ambient*.csv in this directory; skipping")
+
     # Calculate duration between consecutive inferences (in seconds)
     # Shift up so each row has the duration until the next inference
     merged_df['inference_duration_s'] = merged_df['timestamp'].diff().shift(-1)
