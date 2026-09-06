@@ -134,7 +134,25 @@ seconds. Cadence drift and flaky contacts only show over time.
 
 ## 2. Prepare the link (once)
 
-Connect the Pi's **data** micro-USB — the middle one, not `PWR IN` — to the
+At the DEI there is a dedicated test network, so the Pi can be reached over
+Wi-Fi as it is here, and NTP works. **Add that SSID before the Pi leaves your
+desk** -- once it is at the site with no keyboard and no known network, there
+is no way in:
+
+```bash
+sudo nmcli con add type wifi con-name DEI ifname wlan0 ssid "<SSID>" \
+     wifi-sec.key-mgmt wpa-psk wifi-sec.psk "<password>" \
+     connection.autoconnect yes
+nmcli -g NAME,AUTOCONNECT con show
+```
+
+Both networks can stay configured; NetworkManager picks whichever is in range.
+If the DEI network is enterprise (802.1X) rather than a plain pre-shared key,
+it needs `802-1x` settings instead, and that is worth testing before the trip.
+
+The USB link stays as the fallback that depends on no site network at all --
+worth having working, because a Wi-Fi that changes under you mid-campaign
+otherwise ends the collection. Connect the Pi's **data** micro-USB — the middle one, not `PWR IN` — to the
 node. On the node:
 
 ```bash
@@ -157,9 +175,18 @@ ssh-copy-id magnuspi@192.168.7.2                # or append it manually
 ./scripts/sync_pi_clock.sh
 ```
 
-Not optional. The Pi has no real-time clock; over the USB link there is no NTP,
-so it keeps whatever time it had at boot. A drifting clock pairs ambient
-readings with the wrong inference events and reports nothing wrong.
+The Pi has no real-time clock. On a network with NTP it corrects itself at
+boot and this is only a verification; over the USB link alone there is no NTP
+and it keeps whatever time it had, so the step is load-bearing. Run it either
+way -- it costs a second, and a drifting clock pairs ambient readings with the
+wrong inference events and reports nothing wrong.
+
+The script takes the Pi's address, so give it the Wi-Fi one when that is how
+it is reachable:
+
+```bash
+./scripts/sync_pi_clock.sh magnuspi@<pi-ip>
+```
 
 Then restart the logger so the file begins with the campaign:
 
