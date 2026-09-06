@@ -255,10 +255,40 @@ reported total 63 % above the sum of the table it summarised.
 ## Troubleshooting
 
 **`i2cdetect` shows only dashes.** The bus works but nothing answers. Check
-`VIN` is on pin 1 and not 2 or 4; check `SDA` and `SCL` are not swapped; reseat
-all four wires. If `VIN`–`GND` measures 0 V at the module, the pins are not
-soldered. A board labelled only `SHT3X` may be the analog `ARP` variant, which
-never appears on I2C at all.
+`SDA` and `SCL` are not swapped and reseat all four wires. A board labelled
+only `SHT3X` may be the analog `ARP` variant, which never appears on I2C at
+all.
+
+**The sensor answers but never measures.** `i2cdetect` finds `0x44`, the status
+register reads back cleanly and with a valid CRC, and every measurement command
+fails with `Errno 5` or returns `0xff` bytes. Bus speed makes no difference.
+
+This is `VIN` not powering the sensor. The chip runs parasitically off the I2C
+pull-ups, through the protection diodes on `SDA` and `SCL`: microamperes, which
+is enough for the digital core to acknowledge its address and return registers,
+and nowhere near enough to run an ADC conversion. Every symptom follows from
+that, which is why the bus looks healthy while nothing reads.
+
+Measure between `VIN` and `GND` **on the module**, not at the Pi header. It
+must read 3.3 V. Zero, or a few tenths, confirms it. In order of likelihood: a
+cold solder joint on `VIN` -- it holds mechanically and does not conduct, and
+it is invisible; the wire on the wrong pin -- `VIN` belongs on pin **1**, since
+pins 2 and 4 are 5 V and would put the module's pull-ups above what the Pi's
+GPIO tolerate; or a Dupont socket not fully seated.
+
+If `VIN` reads 3.3 V and measurements still fail, the sensing element is dead
+while the digital interface survived. Replace the module.
+
+To tell these apart, read the status register directly:
+
+```bash
+sudo /usr/sbin/i2ctransfer -y 1 w2@0x44 0xF3 0x2D && \
+sudo /usr/sbin/i2ctransfer -y 1 r3@0x44
+```
+
+A CRC-valid answer (`0x80 0x10 0xe1` is a normal post-reset status) proves the
+chip is an SHT3x and its interface is alive, which narrows the fault to power
+or to the sensing element.
 
 **Ambient temperature reads unexpectedly high.** The sensor is picking up the
 Pi or the node's exhaust. Move it and re-check.
