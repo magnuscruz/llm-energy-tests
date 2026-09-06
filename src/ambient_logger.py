@@ -24,8 +24,10 @@ node under test. A sensor sitting on warm hardware measures the hardware.
 """
 import argparse
 import math
+import os
 import random
 import struct
+import sys
 import time
 
 try:
@@ -37,6 +39,7 @@ I2C_BUS = 1
 ADDR_DEFAULT = 0x44          # 0x45 if the ADDR pad is pulled high
 CMD_SINGLE_HIGH_REP = (0x24, 0x00)   # single shot, clock stretching disabled
 MEAS_DELAY_S = 0.016         # datasheet: 15 ms max for high repeatability
+SYNC_EVERY = 60              # samples between fsync; see the write loop
 
 
 def crc8(data: bytes) -> int:
@@ -119,11 +122,41 @@ def main():
         # Drift-free cadence: schedule against a fixed origin rather than
         # sleeping a fixed amount, so the read time does not accumulate.
         next_at = time.time()
+        errors = 0          # consecutive failed reads
+        since_sync = 0
         while True:
-            sample = read_sample(bus, args.address)
+            try:
+                sample = read_sample(bus, args.address)
+            except OSError as exc:
+                # A transient bus error must not end the collection. This runs
+                # unattended for the whole campaign -- about eight days, four
+                # models in sequence -- so exiting on one bad ioctl would cost
+                # every hour that follows it. Keep going and make the failure
+                # visible in the journal instead.
+                errors += 1
+                if errors == 1 or errors == 60 or errors % 3600 == 0:
+                    print(f"[ambient] I2C read failed ({errors} in a row): {exc}",
+                          file=sys.stderr, flush=True)
+                sample = None
+            else:
+                if errors:
+                    print(f"[ambient] sensor recovered after {errors} failed reads",
+                          file=sys.stderr, flush=True)
+                    errors = 0
+
             if sample is not None:
                 t, h = sample
                 fh.write(f"{int(time.time())},{t:.2f},{h:.2f}\n")
+                since_sync += 1
+                # Line buffering reaches the kernel but not the card. Without a
+                # periodic fsync an unclean shutdown leaves a tail of NUL bytes
+                # where the last minutes should be -- which is how the log of
+                # 2026-09-04 ended. Once a minute bounds the loss without
+                # writing to the card every second for eight days.
+                if since_sync >= SYNC_EVERY:
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                    since_sync = 0
             # A failed CRC is dropped rather than imputed; the fusion step
             # already tolerates gaps in the out-of-band streams.
             next_at += args.interval

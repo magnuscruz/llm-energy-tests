@@ -81,11 +81,18 @@ for model_name in model_names:
     ambient_files = sorted(glob.glob('*ambient*.csv'), key=os.path.getmtime)
     if ambient_files:
         df_amb = pd.read_csv(ambient_files[-1])
-        df_amb = df_amb.sort_values('timestamp').reset_index(drop=True)
         for col in ['timestamp', 'ambient_c', 'humidity_pct']:
             if col in df_amb.columns:
                 df_amb[col] = pd.to_numeric(df_amb[col], errors='coerce')
         df_amb = df_amb.dropna(subset=['timestamp'])
+        # An unclean shutdown on the Pi leaves a tail of NUL bytes where the
+        # last minutes should be. read_csv turns that into one NaN row, which
+        # the dropna above removes -- but the column is float64 by then, and
+        # merge_asof refuses to join float keys against the int64 stamps in
+        # merged_df. Cast back before sorting, not after: coercing first also
+        # keeps the sort numeric rather than lexicographic.
+        df_amb['timestamp'] = df_amb['timestamp'].astype('int64')
+        df_amb = df_amb.sort_values('timestamp').reset_index(drop=True)
 
         df_amb['inf_timestamp'] = pd.merge_asof(
             df_amb[['timestamp']],
