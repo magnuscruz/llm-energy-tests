@@ -212,6 +212,29 @@ cache. The script reads the applied cap back from sysfs and **aborts** if it
 does not match the request — the defence against the two campaigns that ran for
 months without an effective cap.
 
+### Check on the ambient logger while it still matters
+
+The ambient file is collected only after the campaign ends, so a logger that
+died on day two is discovered on day eight -- when there is no campaign left
+to repeat. Check it every day or so. It costs one command and needs no copy:
+
+```bash
+ssh magnuspi@192.168.7.2 'systemctl is-active ambient-logger; \
+    grep -c "^[0-9]" ~/ambient.csv; date +%s'
+```
+
+At 1 Hz the sample count must track the seconds elapsed since the logger
+started. Falling behind means dropped reads; running ahead means duplicate
+stamps, which should no longer be possible but is worth seeing. Growth stopped
+altogether means the process is gone or the sensor is off the bus, and
+`journalctl -u ambient-logger -n 20` says which.
+
+The log grows about 2 MB a day, so eight days is roughly 17 MB -- the card is
+not the risk. Power is: anything that cuts the Pi's supply ends the collection
+silently. Never power it from the node's USB port or from a laptop, both of
+which drop power when the machine suspends. That is how 17 hours went missing
+here on 2026-09-07.
+
 ---
 
 ## 5. After
