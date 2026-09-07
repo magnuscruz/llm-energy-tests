@@ -40,6 +40,7 @@ ADDR_DEFAULT = 0x44          # 0x45 if the ADDR pad is pulled high
 CMD_SINGLE_HIGH_REP = (0x24, 0x00)   # single shot, clock stretching disabled
 MEAS_DELAY_S = 0.016         # datasheet: 15 ms max for high repeatability
 SYNC_EVERY = 60              # samples between fsync; see the write loop
+MAX_LAG_S = 5.0              # cadence resyncs past this; see schedule_next()
 
 
 def crc8(data: bytes) -> int:
@@ -66,6 +67,31 @@ def read_sample(bus: SMBus, addr: int):
 
     # Datasheet conversions (SHT3x, 16-bit).
     return (-45 + 175 * t_raw / 65535.0, 100 * h_raw / 65535.0)
+
+
+def schedule_next(next_at, interval):
+    """Return the next deadline on the monotonic clock, resyncing if we fell behind.
+
+    The cadence must be scheduled on time.monotonic(), never on time.time().
+    A Pi has no RTC: it restores the last known time at boot and NTP corrects
+    it minutes later, which on a wall clock is a jump of hours in either
+    direction. Scheduled against time.time(), a forward jump leaves the
+    deadline hours in the past and the loop spins at full speed writing
+    thousands of duplicate-stamped rows until it catches up; a backward jump
+    parks it in a single sleep() for the length of the jump, silently. Both
+    happened here on 2026-09-07: a +17 h correction produced 43 samples a
+    second. The monotonic clock is immune to that, and time.time() is used
+    only to stamp the sample.
+
+    The resync also covers a genuine stall -- the process starved, or the bus
+    blocking longer than the interval -- where catching up buys nothing: the
+    samples are gone, and only the current cadence matters.
+    """
+    next_at += interval
+    now = time.monotonic()
+    if next_at < now - MAX_LAG_S:
+        return now + interval
+    return next_at
 
 
 class FakeSensor:
@@ -108,12 +134,12 @@ def main():
         with open(args.output, "a", buffering=1) as fh:
             if fh.tell() == 0:
                 fh.write("timestamp,ambient_c,humidity_pct\n")
-            next_at = time.time()
+            next_at = time.monotonic()
             while True:
                 t, h = fake.read()
                 fh.write(f"{int(time.time())},{t:.2f},{h:.2f}\n")
-                next_at += args.interval
-                time.sleep(max(0.0, next_at - time.time()))
+                next_at = schedule_next(next_at, args.interval)
+                time.sleep(max(0.0, next_at - time.monotonic()))
         return
 
     with SMBus(I2C_BUS) as bus, open(args.output, "a", buffering=1) as fh:
@@ -121,7 +147,7 @@ def main():
             fh.write("timestamp,ambient_c,humidity_pct\n")
         # Drift-free cadence: schedule against a fixed origin rather than
         # sleeping a fixed amount, so the read time does not accumulate.
-        next_at = time.time()
+        next_at = time.monotonic()
         errors = 0          # consecutive failed reads
         since_sync = 0
         while True:
@@ -159,8 +185,8 @@ def main():
                     since_sync = 0
             # A failed CRC is dropped rather than imputed; the fusion step
             # already tolerates gaps in the out-of-band streams.
-            next_at += args.interval
-            time.sleep(max(0.0, next_at - time.time()))
+            next_at = schedule_next(next_at, args.interval)
+            time.sleep(max(0.0, next_at - time.monotonic()))
 
 
 if __name__ == "__main__":
