@@ -119,7 +119,15 @@ verify_throttling() {
     {
         echo "date=$(date -Is)"
         echo "throttle_enabled=${THROTTLE_ENABLED}"
-        echo "throttle_percentage=${THROTTLE_PERCENTAGE}"
+        # Report "none" rather than the initialised default when throttling is
+        # off: an unthrottled run logging "throttle_percentage=50" reads as a
+        # 50% condition to anyone auditing the file later, and the enabled flag
+        # sitting one line above is easy to miss.
+        if [ "$THROTTLE_ENABLED" = true ]; then
+            echo "throttle_percentage=${THROTTLE_PERCENTAGE}"
+        else
+            echo "throttle_percentage=none"
+        fi
         echo "base_freq_khz=${BASE_FREQ_KHZ}"
         echo "requested_cap_khz=${CAP_FREQ:-none}"
         echo "applied_pcore_max_khz=${p_max}"
