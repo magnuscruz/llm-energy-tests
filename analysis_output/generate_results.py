@@ -112,16 +112,16 @@ plt.rcParams.update({
     "ytick.color": INK_MUTED,
     "grid.color": GRID,
     "font.family": "sans-serif",
-    "font.size": 9,
-    "axes.titlesize": 9,
-    "axes.labelsize": 9,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8,
-    "legend.fontsize": 8,
+    "font.size": 8,
+    "axes.titlesize": 8,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 7,
+    "ytick.labelsize": 7,
+    "legend.fontsize": 6.5,
 })
-# Point sizes are real, not pre-inflated. Figures are generated at 7.16 in --
-# the \textwidth of a two-column IEEEtran page -- and reproduced at that width,
-# so nothing is scaled and 9 pt prints as 9 pt.
+# Point sizes are real, not pre-inflated. Figures are generated at 3.5 in --
+# the \columnwidth of a two-column IEEEtran page -- and reproduced at that
+# width, so nothing is scaled and 8 pt prints as 8 pt.
 #
 # They previously used sizes around 2x, to survive a reduction from a 13 in
 # canvas into a single \columnwidth column. That reduction was 3.7x, not 2x,
@@ -186,23 +186,60 @@ def load_all():
 
 
 def legend_handles(models, conditions):
-    handles = [Line2D([0], [0], color="none", label="Model")]
-    for m in models:
-        handles.append(Line2D([0], [0], color=MODEL_STYLE[m]["color"], lw=3, label=MODEL_STYLE[m]["label"]))
-    handles.append(Line2D([0], [0], color="none", label=""))
-    handles.append(Line2D([0], [0], color="none", label="Condition"))
+    """Model colours then condition dashes, with no pseudo-header entries.
+
+    The "Model" and "Condition" headers cost two of the four rows available
+    below a 3.5 in figure. The caption says colour identifies the model and
+    dash pattern the condition, which is where that belongs.
+    """
+    handles = [Line2D([0], [0], color=MODEL_STYLE[m]["color"], lw=2.4,
+                      label=MODEL_STYLE[m]["label"]) for m in models]
     for c in conditions:
         st = CONDITION_STYLE[c]
-        handles.append(Line2D([0], [0], color=INK_SECONDARY, lw=2.8, linestyle=st["linestyle"], label=st["label"]))
+        handles.append(Line2D([0], [0], color=INK_SECONDARY, lw=1.8,
+                              linestyle=st["linestyle"], label=st["label"]))
     return handles
 
 
-def plot_pair_metric(df, model_a, model_b, metric_col, metric_label, out_name, conditions):
+def _draw_inset(ax, sub, spec):
+    """Magnify one model's band, where the interesting variation is too small
+    to read against the full y range.
+
+    Only used where the magnified difference is real. RAM deliberately has no
+    inset: its spread across conditions is 25-37 MB against 13-39 MB of
+    within-condition noise, so magnifying it would show five separated lines a
+    reader would take for an effect of the frequency cap. It is allocator
+    noise, and the paper's claim is that the footprint does not drift.
+    """
+    axins = ax.inset_axes(spec["box"])
+    for cond in spec["conditions"]:
+        g = sub[(sub.model_key == spec["model"]) & (sub.condition == cond)]
+        if g.empty:
+            continue
+        for _b, gg in g.groupby("test_baseline"):
+            gg = gg.sort_values("Time (Hours)")
+            st = CONDITION_STYLE[cond]
+            axins.plot(gg["Time (Hours)"], gg[spec["col"]],
+                       color=MODEL_STYLE[spec["model"]]["color"],
+                       linestyle=st["linestyle"], linewidth=st["lw"], zorder=st["z"])
+    axins.set_xlim(*spec["xlim"])
+    axins.set_ylim(*spec["ylim"])
+    axins.tick_params(labelsize=5.5, length=2, pad=1)
+    axins.grid(True, linewidth=0.4, alpha=0.6)
+    for sp in ["top", "right"]:
+        axins.spines[sp].set_visible(False)
+    axins.set_facecolor(SURFACE)
+    ax.indicate_inset_zoom(axins, edgecolor=INK_MUTED, linewidth=0.7, alpha=0.7)
+    return axins
+
+
+def plot_pair_metric(df, model_a, model_b, metric_col, metric_label, out_name,
+                     conditions, inset=None):
     # \textwidth of a two-column IEEEtran page is 7.16 in. Generating at that
     # width and printing without reduction keeps the 9 pt labels at 9 pt; the
     # previous 13 in figure was reduced 3.7x into a single column, which put
     # its axis labels below 6 pt.
-    fig, ax = plt.subplots(figsize=(7.16, 3.2))
+    fig, ax = plt.subplots(figsize=(3.5, 2.75))
     sub = df[df.model_key.isin([model_a, model_b]) & df.condition.isin(conditions)]
     for model_key in [model_a, model_b]:
         color = MODEL_STYLE[model_key]["color"]
@@ -227,19 +264,38 @@ def plot_pair_metric(df, model_a, model_b, metric_col, metric_label, out_name, c
     # Legend below the axes rather than beside them. Beside, it consumed two
     # thirds of a 7.16 in canvas and squeezed the data into the remainder; the
     # side placement only worked on the 13 in figure this replaces.
+    if inset:
+        _draw_inset(ax, sub, inset)
+
     handles = legend_handles([model_a, model_b], conditions)
-    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.22),
-              ncol=4, frameon=False, fontsize=8, labelcolor=INK_SECONDARY,
-              columnspacing=1.2, handlelength=2.2)
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.30),
+              ncol=2, frameon=False, fontsize=6.5, labelcolor=INK_SECONDARY,
+              columnspacing=1.0, handlelength=1.8, handletextpad=0.5,
+              labelspacing=0.35, borderpad=0.0)
     fig.tight_layout()
     fig.savefig(os.path.join(OUT_DIR, f"{out_name}.pdf"), facecolor=SURFACE, bbox_inches="tight")
     plt.close(fig)
     print("wrote", out_name)
 
 
+# Where a magnified band shows something the full range hides. Keyed by the
+# figure's out_name suffix so the dispatch stays declarative.
+INSETS = {
+    "pair_qwen_phi3_00_reproducibility_R1_R2": {
+        "model": "phi3_mini", "col": "decode_tps", "conditions": ["R1", "R2"],
+        "box": [0.34, 0.30, 0.62, 0.32], "xlim": (0, 48), "ylim": (20.2, 24.4),
+    },
+    "pair_qwen_phi3_03_decode_tps": {
+        "model": "phi3_mini", "col": "decode_tps", "conditions": ["R1"],
+        "box": [0.34, 0.20, 0.62, 0.28], "xlim": (0, 48), "ylim": (20.2, 24.2),
+    },
+}
+
+
 def plot_reproducibility(df, model_a, model_b, out_name):
     plot_pair_metric(df, model_a, model_b, "decode_tps", "Decode Throughput (tokens/s)",
-                      out_name, conditions=["R1", "R2"])
+                      out_name, conditions=["R1", "R2"],
+                      inset=INSETS.get(out_name))
 
 
 def plot_bar_summary(df, metric_col, ylabel, out_name):
@@ -247,7 +303,7 @@ def plot_bar_summary(df, metric_col, ylabel, out_name):
     models = list(MODEL_STYLE.keys())
     summary = df.groupby(["model_key", "condition"])[metric_col].mean().reset_index()
 
-    fig, ax = plt.subplots(figsize=(7.16, 3.4))
+    fig, ax = plt.subplots(figsize=(3.5, 2.5))
     n_cond = len(conditions)
     width = 0.8 / n_cond
     x = range(len(models))
@@ -269,8 +325,9 @@ def plot_bar_summary(df, metric_col, ylabel, out_name):
     ax.grid(True, axis="y", linewidth=0.8, alpha=0.8)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=5,
-              frameon=False, fontsize=8, labelcolor=INK_SECONDARY)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=3,
+              frameon=False, fontsize=6.5, labelcolor=INK_SECONDARY,
+              columnspacing=1.0, handlelength=1.6, handletextpad=0.5)
     fig.tight_layout()
     fig.savefig(os.path.join(OUT_DIR, f"{out_name}.pdf"), facecolor=SURFACE, bbox_inches="tight")
     plt.close(fig)
@@ -284,8 +341,10 @@ def main():
 
     for model_a, model_b, tag in PAIRS:
         for metric_col, metric_label, metric_tag in METRICS:
+            name = f"{tag}_{metric_tag}"
             plot_pair_metric(df, model_a, model_b, metric_col, metric_label,
-                              f"{tag}_{metric_tag}", conditions=CONDITION_ORDER)
+                              name, conditions=CONDITION_ORDER,
+                              inset=INSETS.get(name))
         plot_reproducibility(df, model_a, model_b, f"{tag}_00_reproducibility_R1_R2")
 
     plot_bar_summary(df, "decode_tps", "Avg Decode Throughput (tokens/s)", "bar_01_decode_tps")
