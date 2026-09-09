@@ -112,18 +112,22 @@ plt.rcParams.update({
     "ytick.color": INK_MUTED,
     "grid.color": GRID,
     "font.family": "sans-serif",
-    "font.size": 20,
-    "axes.titlesize": 22,
-    "axes.labelsize": 21,
-    "xtick.labelsize": 18,
-    "ytick.labelsize": 18,
-    "legend.fontsize": 17,
+    "font.size": 9,
+    "axes.titlesize": 9,
+    "axes.labelsize": 9,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 8,
 })
-# Figures are exported as vector PDF and reproduced at single-column width
-# (\columnwidth) in the paper -- font/line sizes here are set ~2x a "normal"
-# on-screen figure so text stays legible after that shrink. Keep this in sync
-# with generate_threats_figure.py's sizing if that figure's own reproduction
-# width in threats/index.tex ever changes.
+# Point sizes are real, not pre-inflated. Figures are generated at 7.16 in --
+# the \textwidth of a two-column IEEEtran page -- and reproduced at that width,
+# so nothing is scaled and 9 pt prints as 9 pt.
+#
+# They previously used sizes around 2x, to survive a reduction from a 13 in
+# canvas into a single \columnwidth column. That reduction was 3.7x, not 2x,
+# which put axis labels below 6 pt on the page. If a figure's reproduction
+# width in the .tex ever changes, change figsize to match it rather than
+# compensating with the font sizes here.
 
 
 def parse_condition(test_baseline):
@@ -194,7 +198,11 @@ def legend_handles(models, conditions):
 
 
 def plot_pair_metric(df, model_a, model_b, metric_col, metric_label, out_name, conditions):
-    fig, ax = plt.subplots(figsize=(13, 7.2))
+    # \textwidth of a two-column IEEEtran page is 7.16 in. Generating at that
+    # width and printing without reduction keeps the 9 pt labels at 9 pt; the
+    # previous 13 in figure was reduced 3.7x into a single column, which put
+    # its axis labels below 6 pt.
+    fig, ax = plt.subplots(figsize=(7.16, 3.2))
     sub = df[df.model_key.isin([model_a, model_b]) & df.condition.isin(conditions)]
     for model_key in [model_a, model_b]:
         color = MODEL_STYLE[model_key]["color"]
@@ -213,12 +221,16 @@ def plot_pair_metric(df, model_a, model_b, metric_col, metric_label, out_name, c
     ax.grid(True, linewidth=0.8, alpha=0.8)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
-    title = f"{MODEL_STYLE[model_a]['label']} vs {MODEL_STYLE[model_b]['label']} — {metric_label}"
-    ax.set_title(title, fontsize=22, color=INK_PRIMARY, pad=18)
+    # No in-figure title: the LaTeX caption carries it, and duplicating it here
+    # cost vertical space that the y-axis label then collided with.
 
+    # Legend below the axes rather than beside them. Beside, it consumed two
+    # thirds of a 7.16 in canvas and squeezed the data into the remainder; the
+    # side placement only worked on the 13 in figure this replaces.
     handles = legend_handles([model_a, model_b], conditions)
-    ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-              frameon=False, fontsize=17, labelcolor=INK_SECONDARY)
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.22),
+              ncol=4, frameon=False, fontsize=8, labelcolor=INK_SECONDARY,
+              columnspacing=1.2, handlelength=2.2)
     fig.tight_layout()
     fig.savefig(os.path.join(OUT_DIR, f"{out_name}.pdf"), facecolor=SURFACE, bbox_inches="tight")
     plt.close(fig)
@@ -235,7 +247,7 @@ def plot_bar_summary(df, metric_col, ylabel, out_name):
     models = list(MODEL_STYLE.keys())
     summary = df.groupby(["model_key", "condition"])[metric_col].mean().reset_index()
 
-    fig, ax = plt.subplots(figsize=(14, 7.2))
+    fig, ax = plt.subplots(figsize=(7.16, 3.4))
     n_cond = len(conditions)
     width = 0.8 / n_cond
     x = range(len(models))
@@ -252,13 +264,13 @@ def plot_bar_summary(df, metric_col, ylabel, out_name):
 
     ax.set_xticks(list(x))
     wrapped_labels = [MODEL_STYLE[m]["label"].replace(" (", "\n(") for m in models]
-    ax.set_xticklabels(wrapped_labels, rotation=0, ha="center", fontsize=16)
+    ax.set_xticklabels(wrapped_labels, rotation=0, ha="center", fontsize=8)
     ax.set_ylabel(ylabel)
     ax.grid(True, axis="y", linewidth=0.8, alpha=0.8)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
-    ax.set_title(ylabel, fontsize=22, color=INK_PRIMARY, pad=18)
-    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), frameon=False, fontsize=17, labelcolor=INK_SECONDARY)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=5,
+              frameon=False, fontsize=8, labelcolor=INK_SECONDARY)
     fig.tight_layout()
     fig.savefig(os.path.join(OUT_DIR, f"{out_name}.pdf"), facecolor=SURFACE, bbox_inches="tight")
     plt.close(fig)

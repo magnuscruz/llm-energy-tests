@@ -101,6 +101,68 @@ def efficiency_macros(tj):
     return out
 
 
+# Display names for prose. The macro set carries the model and condition as
+# well as the value, because the sentence in methodology/index.tex named the
+# wrong condition for months: it quoted 1.223 at 62.5% when the peak is 1.232
+# at 75%, and nothing tied the prose to the table it contradicted.
+MODEL_PROSE = {
+    "llama3.1_8b": "Llama~3.1 8B",
+    "phi3_mini": "Phi-3~Mini",
+    "deepseek-v2_lite": "DeepSeek-v2~Lite",
+    "qwen2.5_0.5b": "Qwen2.5 0.5B",
+}
+COND_PROSE = {"R1": "unthrottled", "R2": "unthrottled (R2)",
+              "87_5": "87.5\\% cap", "75": "75\\% cap",
+              "62_5": "62.5\\% cap", "50": "50\\% cap"}
+
+
+def tj_span_macros(tj):
+    """Extremes of tokens-per-joule across the reported conditions.
+
+    Emits the model and condition alongside each value so the prose cannot
+    drift from the table: whoever changes the data changes all six macros at
+    once, or none.
+    """
+    out = {}
+    conds = ["R1"] + THROTTLED
+    cells = [(tj.loc[key, c], key, c)
+             for key in MODELS.values() for c in conds
+             if key in tj.index and c in tj.columns and pd.notna(tj.loc[key, c])]
+    hi = max(cells)
+    lo = min(cells)
+    for tag, (val, key, cond) in (("Hi", hi), ("Lo", lo)):
+        out[f"tjSpan{tag}"] = f"{val:.3f}"
+        out[f"tjSpan{tag}Model"] = MODEL_PROSE[key]
+        out[f"tjSpan{tag}Cond"] = COND_PROSE[cond]
+    out["tjSpanRatio"] = r(hi[0] / lo[0], 1)
+    return out
+
+
+# Grid intensities for the sensitivity paragraph: a decarbonised grid, the
+# reference value the paper adopts, and a coal-heavy one.
+CI_GRIDS = {"Lo": 50, "Ref": 400, "Hi": 700}
+
+
+def ce_sensitivity_macros(tj):
+    """CE at three grid intensities, for the best and worst cells of the table.
+
+    CI_grid enters (2) as a pure divisor, so every value rescales by the same
+    factor and no ordering can change. These macros exist to give absolute
+    figures a reader can situate, not to present a rescaling as an analysis.
+    """
+    conds = ["R1"] + THROTTLED
+    cells = [(tj.loc[key, c], key, c)
+             for key in MODELS.values() for c in conds
+             if key in tj.index and c in tj.columns and pd.notna(tj.loc[key, c])]
+    out = {}
+    for tag, (val, _key, _c) in (("Best", max(cells)), ("Worst", min(cells))):
+        for gname, ci in CI_GRIDS.items():
+            ce = val * 3.6e6 / ci
+            out[f"ce{tag}{gname}"] = f"{ce:,.0f}".replace(",", "{,}")
+    out["ceSpread"] = r(max(CI_GRIDS.values()) / min(CI_GRIDS.values()), 0)
+    return out
+
+
 def throughput_power_macros(tps, pw):
     """Throughput loss and power drop from R1 to the 62.5% cap, with endpoints."""
     out = {}
@@ -380,6 +442,7 @@ def report_hardcoded():
         ("recessions", r"by \$-\d\.\d\\%\$ for Qwen[^,]*"),
         ("shelf gap", r"roughly a \d+\\,\$\^\{\\circ\}\$C gap"),
         ("cool shelf", r"``cool'' shelf of \d+--\d+"),
+        ("T_J span", r"from \d\.\d{3} \(\w[^)]*cap\)"),
     ]:
         hits = re.findall(pat, src)
         print(f"  {label:16s}: {hits if hits else 'not found'}")
@@ -394,6 +457,8 @@ def main():
 
     macros = {}
     macros.update(efficiency_macros(pivot("tokens_per_joule")))
+    macros.update(tj_span_macros(pivot("tokens_per_joule")))
+    macros.update(ce_sensitivity_macros(pivot("tokens_per_joule")))
     macros.update(throughput_power_macros(pivot(TPS), pivot("watts_mean")))
     macros.update(drift_macros(d))
     macros.update(phi_decline_macros(d))
