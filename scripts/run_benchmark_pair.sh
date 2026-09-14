@@ -15,24 +15,48 @@ fi
 # --- Argument Parsing ---
 THROTTLE_ENABLED=false
 THROTTLE_PERCENTAGE=50
+MODELS_OVERRIDE=""
+LOG_DIR_OVERRIDE=""
 
-if [[ "$2" == "--throttle" ]]; then
-    THROTTLE_ENABLED=true
-    THROTTLE_PERCENTAGE=$3
-    echo "[!] Throttling ENABLED at ${THROTTLE_PERCENTAGE}% for this run."
-fi
+DURATION_SECONDS="$1"; shift 2>/dev/null
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --throttle)
+            THROTTLE_ENABLED=true; THROTTLE_PERCENTAGE="$2"; shift 2
+            echo "[!] Throttling ENABLED at ${THROTTLE_PERCENTAGE}% for this run." ;;
+        --models)
+            # Resume one model of an interrupted campaign without re-running the
+            # others. A power cut ends a campaign; the affected model's 48 h must
+            # then be re-run WHOLE, because the measurement premise is continuous
+            # sustained load and the phenomenon under study is accumulated state,
+            # which a reboot clears. Splicing two partial windows would produce a
+            # campaign that looks complete and is not.
+            MODELS_OVERRIDE="$2"; shift 2 ;;
+        --log-dir)
+            # Write into an existing campaign directory instead of today's date,
+            # so a re-run model lands beside the models that already completed.
+            LOG_DIR_OVERRIDE="$2"; shift 2 ;;
+        *)
+            echo "[-] Unknown argument: $1"; exit 1 ;;
+    esac
+done
 
-if [ -z "$1" ]; then
+if [ -z "$DURATION_SECONDS" ]; then
     echo "Usage: sudo $0 <duration_in_seconds> [--throttle <percentage>]"
+    echo "                                     [--models \"a:b c:d\"] [--log-dir PATH]"
     exit 1
 fi
 
 # 2. Configuration
-DURATION_SECONDS=$1
 WARMUP_DURATION=600 # 10 min
 MODELS=("qwen2.5:0.5b" "phi3:mini" "llama3.1:8b" "deepseek-v2:lite")
+if [ -n "$MODELS_OVERRIDE" ]; then
+    read -r -a MODELS <<< "$MODELS_OVERRIDE"
+    echo "[!] Model set overridden: ${MODELS[*]}"
+fi
 PROJECT_ROOT="/home/ubuntu/git/llm-energy-tests"
-LOG_DIR="$PROJECT_ROOT/logs/$(date +%Y-%m-%d)"
+LOG_DIR="${LOG_DIR_OVERRIDE:-$PROJECT_ROOT/logs/$(date +%Y-%m-%d)}"
+[ -n "$LOG_DIR_OVERRIDE" ] && echo "[!] Writing into existing campaign: $LOG_DIR"
 WARMUP_DIR="${LOG_DIR}/warmup_logs"
 AGING_DIR="${LOG_DIR}/deep_aging"
 

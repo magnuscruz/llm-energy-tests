@@ -235,6 +235,62 @@ silently. Never power it from the node's USB port or from a laptop, both of
 which drop power when the machine suspends. That is how 17 hours went missing
 here on 2026-09-07.
 
+### Recovering from an interruption
+
+A campaign that loses power — a building move, a supply failure, an accidental
+reboot — cannot be resumed. The affected model's 48 h must be re-run whole.
+
+The premise of the measurement is continuous sustained load, and the phenomenon
+under study is accumulated state, which a reboot clears. Splicing a partial
+window onto its continuation produces a campaign that looks complete and is
+not, which is the failure mode this project has already met twice from a
+different cause.
+
+The models that already closed are unaffected and stay where they are.
+
+**Before the power goes**, if you get warning:
+
+```bash
+sudo pkill -f run_benchmark_pair                 # clean stop, no half-written rows
+cd logs/<campaign>/deep_aging
+mkdir -p ../interrupted
+mv <model>_48.00h_* ../interrupted/              # keep the partial run as evidence
+ssh magnuspi@<pi> 'sudo systemctl stop ambient-logger'
+```
+
+Archiving matters: the loggers open their outputs with `>`, so a re-run
+overwrites the partial files rather than appending to them. Nothing is spliced,
+but nothing is kept either.
+
+**After power returns**, in this order:
+
+```bash
+uname -r                                         # must be the campaign's kernel
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+ssh magnuspi@<pi> 'systemctl is-active ambient-logger; date'
+./scripts/sync_pi_clock.sh magnuspi@<pi>         # no RTC; NTP may not have run yet
+```
+
+Then re-run the one model, into the campaign it belongs to:
+
+```bash
+sudo nohup ./scripts/run_benchmark_pair.sh 172800 \
+     --models "deepseek-v2:lite" \
+     --log-dir "$PWD/logs/<campaign>" \
+     > benchmark_<model>_restart.log 2>&1 &
+```
+
+`--log-dir` is what keeps the re-run beside the models that completed; without
+it the script writes to a directory named for today's date and splits one
+campaign across two. Confirm the new `run_config.log` entries carry the same
+governor, EPP and kernel as the earlier ones — a reboot resets the governor,
+and the script re-applies it, but the log is where you verify that it did.
+
+**The ambient record will have a gap**, and that is correct rather than
+something to hide. `collect_ambient.sh` reports it as partial coverage, and the
+campaign's ambient-adjusted claims are weakened for the affected window. Report
+the interruption rather than papering over it.
+
 ---
 
 ## 5. After

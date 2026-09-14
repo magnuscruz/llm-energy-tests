@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../IEEETransactions"
+		},
+		{
+			"path": "../latex-thesis-template-cisuc-dei"
+		},
+		{
+			"path": "../paper2-aging-position"
+		},
+		{
+			"path": "../paper3-mechanism"
+		},
+		{
+			"path": "../paper4-framework"
+		},
+		{
+			"path": "../phd-proposal"
+		}
+	],
+	"settings": {}
+}
