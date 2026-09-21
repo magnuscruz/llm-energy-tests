@@ -50,6 +50,8 @@ MODEL_STYLE = {
 CONDITION_STYLE = {
     "R1":     {"label": "R1 (Unthrottled)",       "linestyle": "solid",             "lw": 3.2, "z": 5},
     "R2":     {"label": "R2 (Unthrottled, rep.)", "linestyle": (0, (6, 2)),          "lw": 2.6, "z": 4},
+    "R3":     {"label": "R3 (Unthrottled, rep.)", "linestyle": (0, (2, 1, 6, 1)),    "lw": 2.6, "z": 4},
+    "100":    {"label": "Throttled 100%",         "linestyle": (0, (4, 1)),          "lw": 2.8, "z": 3},
     "87_5":   {"label": "Throttled 87.5%",        "linestyle": (0, (1, 1)),          "lw": 2.8, "z": 3},
     "75":     {"label": "Throttled 75%",          "linestyle": (0, (3, 1, 1, 1)),    "lw": 2.8, "z": 2},
     "62_5":   {"label": "Throttled 62.5%",        "linestyle": (0, (5, 5)),          "lw": 2.8, "z": 1},
@@ -63,24 +65,25 @@ CONDITION_ORDER = ["R1", "R2", "87_5", "75", "62_5"]
 
 # Superset used only for classifying rows while loading data (includes 50%,
 # needed for the bar-chart / Table III condition set below).
-ALL_CONDITIONS = CONDITION_ORDER + ["50"]
+ALL_CONDITIONS = CONDITION_ORDER + ["50", "100", "R3"]
 
-# Ordinal sequential ramp (one hue, light->dark) for the 5 bar-chart conditions
-# (R1, 87.5, 75, 62.5, 50 -- no R2). Validated with scripts/validate_palette.js
-# --ordinal (dataviz skill, palette.md); the previous 5-color set (which included
-# R2 instead of 50) does not directly reuse these steps, since swapping one entry
-# for a darker one changed which spacing clears the adjacent-gap floor.
+# Ordinal sequential ramp (one hue, light->dark) for the 6 bar-chart conditions
+# (R1, 100, 87.5, 75, 62.5, 50 -- no R2/R3). The original 5 steps were validated
+# with scripts/validate_palette.js --ordinal (dataviz skill, palette.md), but that
+# script is not in this repo, so the 100% step inserted between R1 and 87.5% was
+# spaced by hand and has NOT been machine-checked against the adjacent-gap floor.
 CONDITION_BAR_COLOR = {
     "R1":    "#86b6ef",
+    "100":   "#5d9dea",
     "87_5":  "#3987e5",
     "75":    "#256abf",
     "62_5":  "#184f95",
     "50":    "#0d366b",
 }
 
-# Bar-chart condition set: mirrors Table III exactly (R1 + all four throttled
-# points, no R2 replicate).
-BAR_CONDITIONS = ["R1", "87_5", "75", "62_5", "50"]
+# Bar-chart condition set: mirrors Table III exactly (R1 + all five throttled
+# points, no R2/R3 replicates).
+BAR_CONDITIONS = ["R1", "100", "87_5", "75", "62_5", "50"]
 
 PAIRS = [
     ("llama3.1_8b", "deepseek-v2_lite", "pair_llama_deepseek"),
@@ -351,7 +354,12 @@ def main():
     plot_bar_summary(df, "watts_mean", "Avg Power Draw (W)", "bar_02_power")
     plot_bar_summary(df, "tokens_per_joule", "Avg Efficiency (Tokens/Joule)", "bar_03_efficiency")
 
-    df.to_csv(os.path.join(OUT_DIR, "combined_dataset.csv"), index=False)
+    # Gzipped, not plain CSV: at seven reported campaigns the plain file reached
+    # 101.9 MB and GitHub refuses any blob over 100 MB. pandas handles the .gz
+    # extension transparently on both ends, so every reader is unchanged but for
+    # the name. It is a build artifact either way -- generate_results.py rebuilds
+    # it from the raw per-campaign CSVs, which are the authoritative source.
+    df.to_csv(os.path.join(OUT_DIR, "combined_dataset.csv.gz"), index=False)
     print("Done.")
 
 

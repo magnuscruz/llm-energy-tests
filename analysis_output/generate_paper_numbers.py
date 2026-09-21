@@ -18,7 +18,7 @@ import pandas as pd
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PAPER = os.path.abspath(os.path.join(REPO, "..", "IEEETransactions"))
-DATA = os.path.join(REPO, "analysis_output", "combined_dataset.csv")
+DATA = os.path.join(REPO, "analysis_output", "combined_dataset.csv.gz")
 OUT = os.path.join(PAPER, "numbers.tex")
 
 # The original 2026-07-11 50% campaign ran without an effective cap; the
@@ -32,12 +32,14 @@ INVALID_CAMPAIGN = "2026-07-11_48h_50_throttling"
 REPORTED_CAMPAIGNS = [
     "2026-05-01_48h_R1_no_throtting",   # R1: llama, deepseek
     "2026-05-05_48h_R1_no_throtting",   # R1: qwen, phi3
+    "2026-08-29_48h_100_throttling",    # 100%: cap at the 3500 MHz base clock
     "2026-08-18_48h_87_5_throttling",
     "2026-06-14_48h_75_throttling",
     "2026-07-02_48h_62_5_throttling",
     "2026-07-19_48h_50_throttling",
 ]
 R2_CAMPAIGN = "2026-05-09_48h_R2_no_throtting"
+R3_CAMPAIGN = "2026-09-07_48h_R3_no_throtting"
 
 HOURS = "Time (Hours)"
 TPS = "decode_tps"
@@ -49,7 +51,8 @@ MODELS = {
     "Qwen": "qwen2.5_0.5b",
 }
 THROTTLED = ["87_5", "75", "62_5", "50"]
-COND_NAME = {"R1": "Rone", "R2": "Rtwo", "87_5": "EightySevenFive",
+COND_NAME = {"R1": "Rone", "R2": "Rtwo", "R3": "Rthree", "100": "Hundred",
+             "87_5": "EightySevenFive",
              "75": "SeventyFive", "62_5": "SixtyTwoFive", "50": "Fifty"}
 
 
@@ -448,6 +451,47 @@ def report_hardcoded():
         print(f"  {label:16s}: {hits if hits else 'not found'}")
 
 
+def turbo_macros(tj, pw, tps):
+    """Split the R1 -> 87.5% efficiency gain into turbo removal and the first cap.
+
+    The 100% condition caps the clock at the 3500 MHz base frequency, which
+    disables turbo without slowing the core below its rated speed. Without that
+    rung, the paper's largest efficiency step bundles two distinct physical
+    changes; with it they separate, and roughly half the gain turns out to
+    precede any real cap.
+
+    100% is deliberately NOT in THROTTLED: that list drives the "best throttled
+    point" search behind gain*/rec*, and the turbo-removal rung is not a cap in
+    the sense those macros mean. Adding it there would not move the maximum
+    (75%/62.5% still win) but it would blur what those macros report.
+
+    turbo* contrasts R1 against 100%, and so is confounded with four months of
+    kernel and Ollama drift. turboMatched* is the same contrast against R3,
+    which shares kernel 6.8.0-138 and Ollama 0.17.7 with the 100% campaign and
+    therefore isolates turbo alone. The two agree, which is the point.
+    """
+    out = {}
+    turbo, matched, cap, watt, cost = {}, {}, {}, {}, {}
+    for name, key in MODELS.items():
+        turbo[name] = 100 * (tj.loc[key, "100"] / tj.loc[key, "R1"] - 1)
+        cap[name] = 100 * (tj.loc[key, "87_5"] / tj.loc[key, "100"] - 1)
+        matched[name] = 100 * (tj.loc[key, "100"] / tj.loc[key, "R3"] - 1)
+        watt[name] = 100 * (1 - pw.loc[key, "100"] / pw.loc[key, "R3"])
+        cost[name] = 100 * (1 - tps.loc[key, "100"] / tps.loc[key, "R3"])
+        out[f"turbo{name}"] = r(turbo[name])
+        out[f"cap{name}"] = r(cap[name])
+        out[f"turboMatched{name}"] = r(matched[name])
+    out["turboLo"], out["turboHi"] = r(min(turbo.values())), r(max(turbo.values()))
+    out["capLo"], out["capHi"] = r(min(cap.values())), r(max(cap.values()))
+    out["turboMatchedLo"] = r(min(matched.values()))
+    out["turboMatchedHi"] = r(max(matched.values()))
+    out["turboWattLo"] = r(min(watt.values()), 1)
+    out["turboWattHi"] = r(max(watt.values()), 1)
+    out["turboCostLo"] = r(min(cost.values()), 1)
+    out["turboCostHi"] = r(max(cost.values()), 1)
+    return out
+
+
 def main():
     d = pd.read_csv(DATA, low_memory=False)
 
@@ -460,6 +504,7 @@ def main():
     macros.update(tj_span_macros(pivot("tokens_per_joule")))
     macros.update(ce_sensitivity_macros(pivot("tokens_per_joule")))
     macros.update(throughput_power_macros(pivot(TPS), pivot("watts_mean")))
+    macros.update(turbo_macros(pivot("tokens_per_joule"), pivot("watts_mean"), pivot(TPS)))
     macros.update(drift_macros(d))
     macros.update(phi_decline_macros(d))
     macros.update(volume_macros())

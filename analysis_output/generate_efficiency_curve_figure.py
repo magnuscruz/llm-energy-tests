@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 OUT_DIR = os.path.dirname(__file__)
-COMBINED_CSV = os.path.join(OUT_DIR, "combined_dataset.csv")
+COMBINED_CSV = os.path.join(OUT_DIR, "combined_dataset.csv.gz")
 
 MODEL_STYLE = {
     "llama3.1_8b":      {"label": "Llama 3.1 8B",       "color": "#2a78d6"},
@@ -17,14 +17,20 @@ MODEL_STYLE = {
 
 # Cap ladder expressed in absolute MHz, consistent with methodology/index.tex
 # Section III-B: caps are defined relative to the 3.5GHz (3500 MHz) E-core
-# maximum, so R1 (unthrottled) sits at the 100% point of that same scale.
+# maximum. R1 used to be drawn AT 3500, on the reasoning that an uncapped run
+# sits at the 100% point of that scale. That is now wrong twice over: the 100%
+# campaign is an actual measurement at a 3500 MHz cap, so the x-position is
+# taken, and an uncapped run does not sit there anyway -- with turbo free it
+# sustains ~4.1 GHz. R1 predates frequency telemetry, so its x-position is the
+# mean sustained frequency measured in R3, the unthrottled campaign that does
+# carry per-core logging (4.01-4.21 GHz across the four models).
 CONDITION_MHZ = {
-    "R1": 3500, "87_5": 3063, "75": 2625, "62_5": 2188, "50": 1750,
+    "R1": 4100, "100": 3500, "87_5": 3063, "75": 2625, "62_5": 2188, "50": 1750,
 }
 CONDITION_LABEL = {
-    "R1": "R1\n(unthr.)", "87_5": "87.5%", "75": "75%", "62_5": "62.5%", "50": "50%",
+    "R1": "R1\n(turbo)", "100": "100%", "87_5": "87.5%", "75": "75%", "62_5": "62.5%", "50": "50%",
 }
-ORDER = ["50", "62_5", "75", "87_5", "R1"]  # left-to-right, ascending MHz
+ORDER = ["50", "62_5", "75", "87_5", "100", "R1"]  # left-to-right, ascending MHz
 
 CRITICAL_RED = "#d03b3b"
 SURFACE = "#fcfcfb"

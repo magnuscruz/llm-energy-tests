@@ -4,3 +4,6 @@ __pycache__/
 venv/
 .venv/
 .env
+
+# Build artifact; the .gz form is tracked instead (GitHub 100 MB blob limit)
+analysis_output/combined_dataset.csv

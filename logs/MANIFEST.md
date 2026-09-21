@@ -1,23 +1,26 @@
 # Campaign manifest
 
-Eleven 48-hour campaigns were executed. **Six feed the results reported in the
-paper**; the other five are retained here for transparency but are deliberately
-excluded from every table and figure. This file records which is which, and why.
+Thirteen 48-hour campaigns were executed. **Seven feed the results reported in
+the paper**; the other six are retained here for transparency but are
+deliberately excluded from every table and figure. This file records which is
+which, and why.
 
 The selection is enforced in code, not by convention:
 
 - `analysis_output/generate_results.py` → `EXCLUDED_CAMPAIGNS` (builds `combined_dataset.csv`)
 - `analysis_output/generate_paper_numbers.py` → `REPORTED_CAMPAIGNS` (emits the paper's numbers)
+- `analysis_output/generate_threats_figure.py` → `VALID_DIRS` (hardcoded campaign paths)
 
-Both lists must stay in step. Changing one without the other will silently skew
-the reported totals.
+All three must stay in step, together with the table below. Changing one without
+the others will silently skew the reported totals.
 
-## Reported (6 campaigns, 20 runs, 960 h)
+## Reported (7 campaigns, 24 runs, 1152 h)
 
 | Campaign | Condition | Models | Freq. telemetry |
 |---|---|---|---|
 | `2026-05-01_48h_R1_no_throtting` | R1 unthrottled | Llama, DeepSeek | no |
 | `2026-05-05_48h_R1_no_throtting` | R1 unthrottled | Qwen, Phi-3 | no |
+| `2026-08-29_48h_100_throttling` | 100 % (3500 MHz) | all four | **yes** |
 | `2026-06-14_48h_75_throttling` | 75 % (2625 MHz) | all four | no |
 | `2026-07-02_48h_62_5_throttling` | 62.5 % (2188 MHz) | all four | no |
 | `2026-07-19_48h_50_throttling` | 50 % (1750 MHz) | all four | **yes** |
@@ -27,9 +30,23 @@ R1 is split across two sittings because the node runs one model at a time;
 cross-model comparisons within R1 are therefore confounded with ambient drift
 and are avoided in the paper.
 
-`2026-05-09_48h_R2_no_throtting` is the unthrottled replicate. It is not one of
-the 20 reported runs, but its power samples are included in the reported sample
-total and it underpins the reproducibility analysis.
+`2026-05-09_48h_R2_no_throtting` and `2026-09-07_48h_R3_no_throtting` are the
+unthrottled replicates. Neither is one of the 24 reported runs, but their power
+samples are included in the reported sample total and they underpin the
+reproducibility analysis.
+
+The 100 % condition caps the clock at the 3500 MHz base frequency, which
+disables turbo without constraining the core below its nominal rating. It is
+the only condition sharing both kernel (6.8.0-138) and Ollama version (0.17.7)
+with an unthrottled campaign (R3), so the R3-vs-100 % contrast isolates the cost
+of turbo from the software-stack drift that separates R1/R2 from the later runs.
+
+R3 carries three caveats that R1 and R2 do not, and they must travel with any
+number derived from it: its DeepSeek run executed five days after the other
+three and in a different room, following a power interruption; the ambient
+logger covered only 24 % of its window, with a 42.8 h hole inside the DeepSeek
+run; and all four models ran 4.7--5.0 °C hotter than in R1/R2, a uniform offset
+consistent with room ambient rather than with anything in the node.
 
 ## Excluded: silently mis-throttled (2 campaigns)
 

@@ -21,7 +21,7 @@ except ImportError:
     HAVE_SCIPY = False
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DATA = os.path.join(REPO, "analysis_output", "combined_dataset.csv")
+DATA = os.path.join(REPO, "analysis_output", "combined_dataset.csv.gz")
 CONDS = ["R1", "R2", "87_5", "75", "62_5", "50"]
 MODELS = ["phi3_mini", "qwen2.5_0.5b", "llama3.1_8b", "deepseek-v2_lite"]
 
