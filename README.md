@@ -66,10 +66,10 @@ ollama pull deepseek-v2:lite
 ### Run Benchmark
 ```bash
 # 1 hour per model, no throttling
-sudo ./scripts/run_benchmark.sh 3600
+sudo ./scripts/run_benchmark_pair.sh 3600
 
 # 48-hour aging test with thermal constraints
-sudo nohup ./scripts/run_benchmark.sh 172800 --throttle 75 > benchmark.log 2>&1 &
+sudo nohup ./scripts/run_benchmark_pair.sh 172800 --throttle 75 > benchmark.log 2>&1 &
 
 # View results in dashboard
 ./scripts/run_dashboard.sh
@@ -188,23 +188,6 @@ edge network reliability."
 
 ### Main Benchmarking Scripts
 
-#### `run_benchmark.sh` - Full Model Suite
-Comprehensive aging benchmark across all 6-7 models with optional thermal throttling.
-
-```bash
-# Usage
-sudo ./scripts/run_benchmark.sh <duration_seconds> [--throttle <percentage>]
-
-# Examples
-sudo ./scripts/run_benchmark.sh 3600                    # 1 hour, no throttle
-sudo ./scripts/run_benchmark.sh 86400 --throttle 50     # 24 hours, 50% CPU cap
-sudo ./scripts/run_benchmark.sh 172800 --throttle 75    # 48 hours, thermal stress
-```
-
-**Models tested**: Qwen2.5 0.5B, Gemma2 2B, Phi-3 Mini, Llama 3.1 8B, Mistral 7B, DeepSeek-v2 Lite
-
-See [SCRIPTS_USAGE.md](SCRIPTS_USAGE.md#run_benchmarksh) for detailed usage.
-
 #### `run_benchmark_pair.sh` - Dense vs MoE Comparison
 Pairwise comparison with phase-aware metrics for statistical analysis.
 
@@ -267,7 +250,6 @@ llm-energy-tests/
 ├── app.py                        # HF Spaces entry point
 │
 ├── scripts/
-│   ├── run_benchmark.sh          # Full model aging benchmark
 │   ├── run_benchmark_pair.sh     # Dense vs MoE comparison
 │   ├── run_dashboard.sh          # Launch visualization dashboard
 │   ├── deploy_hf_spaces.sh       # HF Spaces automation
@@ -326,7 +308,7 @@ Time,Temp,CPU_Load,RAM_MB
 ### Local Dashboard
 ```bash
 # Terminal 1: Run benchmark
-sudo ./scripts/run_benchmark.sh 3600
+sudo ./scripts/run_benchmark_pair.sh 3600
 
 # Terminal 2: Launch dashboard
 ./scripts/run_dashboard.sh

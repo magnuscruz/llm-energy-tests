@@ -10,7 +10,6 @@ Comprehensive documentation for all automation scripts in the `scripts/` directo
 2. [Installation & Setup](#installation--setup)
 3. [Scripts Overview](#scripts-overview)
 4. [Detailed Usage](#detailed-usage)
-   - [run_benchmark.sh](#run_benchmarksh)
    - [run_benchmark_pair.sh](#run_benchmark_pairsh)
    - [run_dashboard.sh](#run_dashboardsh)
    - [deploy_hf_spaces.sh](#deploy_hf_spacessh)
@@ -106,7 +105,6 @@ ollama pull deepseek-v2:lite
 
 | Script | Purpose | Requires Root | Duration |
 |--------|---------|---------------|----------|
-| `run_benchmark.sh` | Full LLM aging benchmark with all models | ✅ Yes | 10+ hours |
 | `run_benchmark_pair.sh` | Pairwise dense vs MoE model comparison | ✅ Yes | Variable |
 | `run_dashboard.sh` | Launch Streamlit visualization dashboard | ❌ No | N/A |
 | `deploy_hf_spaces.sh` | Deploy dashboard to Hugging Face Spaces | ❌ No | N/A |
@@ -116,85 +114,6 @@ ollama pull deepseek-v2:lite
 ---
 
 ## Detailed Usage
-
-### run_benchmark.sh
-
-**Purpose**: Run comprehensive aging benchmark across multiple LLM models with optional thermal throttling.
-
-**Usage**:
-```bash
-sudo ./scripts/run_benchmark.sh <duration_seconds> [--throttle <percentage>]
-```
-
-**Parameters**:
-- `<duration_seconds>` (required): How long to stress-test each model (in seconds)
-  - 3600 = 1 hour
-  - 7200 = 2 hours
-  - 86400 = 24 hours
-  - 172800 = 48 hours
-
-- `--throttle <percentage>` (optional): CPU throttling level (0-100%)
-  - 50 = Cap at 50% max CPU frequency
-  - 75 = Cap at 75% max CPU frequency
-  - 87.5 = Cap at 87.5% max CPU frequency (thermal stress)
-
-**Examples**:
-
-```bash
-# Quick test: 1 hour per model, no throttling
-sudo ./scripts/run_benchmark.sh 3600
-
-# 24-hour aging test with 50% throttling
-sudo nohup ./scripts/run_benchmark.sh 86400 --throttle 50 > benchmark_24h.log 2>&1 &
-
-# 48-hour test with severe thermal constraints
-sudo nohup ./scripts/run_benchmark.sh 172800 --throttle 62.5 > benchmark_48h_thermal.log 2>&1 &
-```
-
-**Models Tested**:
-- qwen2.5:0.5b (0.5B parameters)
-- gemma2:2b (2B parameters)
-- phi3:mini (3.8B parameters)
-- llama3.1:8b (8B parameters)
-- mistral:7b (7B parameters)
-- deepseek-v2:lite (MoE model)
-
-**Output**:
-```
-logs/YYYY-MM-DD/
-├── warmup_logs/           # 10-min warm-up phase
-│   ├── model_name_*_inference.csv
-│   ├── model_name_*_physical.csv
-│   ├── model_name_*_system.csv
-│   └── ...
-└── deep_aging/            # Main aging phase
-    ├── model_name_*_inference.csv
-    ├── model_name_*_physical.csv
-    ├── model_name_*_system.csv
-    └── ...
-```
-
-**CSV Columns**:
-- `inference.csv`: timestamp, total_duration, load_duration, prompt_eval_count, eval_count, TPS
-- `physical.csv`: Time, Watts (from Tapo P115)
-- `system.csv`: Time, Temp (°C), CPU_Load (%), RAM_MB
-
-**Background Execution**:
-```bash
-# Run in background with nohup
-sudo nohup ./scripts/run_benchmark.sh 172800 --throttle 50 > benchmark.log 2>&1 &
-
-# Monitor in real-time
-tail -f benchmark.log
-
-# Find the process PID
-pgrep -f "run_benchmark.sh"
-
-# Stop the benchmark
-sudo kill <PID>
-```
-
----
 
 ### run_benchmark_pair.sh
 
@@ -206,7 +125,7 @@ sudo ./scripts/run_benchmark_pair.sh <duration_seconds> [--throttle <percentage>
 ```
 
 **Parameters**:
-Same as `run_benchmark.sh` but focuses on specific model pairs:
+Same as `run_benchmark_pair.sh` but focuses on specific model pairs:
 - qwen2.5:0.5b (smallest, most efficient)
 - phi3:mini (small, efficient)
 - llama3.1:8b (dense, reference baseline)
@@ -222,7 +141,7 @@ sudo nohup ./scripts/run_benchmark_pair.sh 43200 --throttle 75 > pair_comparison
 sudo nohup ./scripts/run_benchmark_pair.sh 172800 > aging_paper_48h.log 2>&1 &
 ```
 
-**Differences from run_benchmark.sh**:
+**Differences from run_benchmark_pair.sh**:
 - Logs in format: `model_name_<duration>h_inference.csv`
 - Phase-aware metrics: `prefill_tps`, `decode_tps` (separate throughput measurements)
 - Includes timestamp in Unix epoch format for precise synchronization
@@ -381,13 +300,13 @@ git push origin main  # <- Triggers auto-deploy
 # Run multiple benchmark configs without manual intervention
 
 # 24-hour baseline (no throttling)
-sudo ./scripts/run_benchmark.sh 86400
+sudo ./scripts/run_benchmark_pair.sh 86400
 
 # 24-hour with 50% throttling
-sudo ./scripts/run_benchmark.sh 86400 --throttle 50
+sudo ./scripts/run_benchmark_pair.sh 86400 --throttle 50
 
 # 24-hour with 75% thermal stress
-sudo ./scripts/run_benchmark.sh 86400 --throttle 75
+sudo ./scripts/run_benchmark_pair.sh 86400 --throttle 75
 
 echo "All benchmarks completed!"
 ```
@@ -396,7 +315,7 @@ echo "All benchmarks completed!"
 
 ```bash
 # Start benchmark and save to log
-sudo nohup ./scripts/run_benchmark.sh 172800 --throttle 62.5 \
+sudo nohup ./scripts/run_benchmark_pair.sh 172800 --throttle 62.5 \
     > logs/benchmark_run_$(date +%Y%m%d_%H%M%S).log 2>&1 &
 
 # Get the process ID
@@ -414,13 +333,13 @@ ps -p $PID
 
 ```bash
 # Before optimization
-sudo ./scripts/run_benchmark.sh 43200 --throttle 75
+sudo ./scripts/run_benchmark_pair.sh 43200 --throttle 75
 # Saves to logs/YYYY-MM-DD/deep_aging/*
 
 # [Make your optimization changes]
 
 # After optimization  
-sudo ./scripts/run_benchmark.sh 43200 --throttle 75
+sudo ./scripts/run_benchmark_pair.sh 43200 --throttle 75
 # Saves to logs/YYYY-MM-DD/deep_aging/*
 
 # View both in dashboard
@@ -432,7 +351,7 @@ sudo ./scripts/run_benchmark.sh 43200 --throttle 75
 
 ```bash
 # Add to crontab: crontab -e
-0 2 * * * /home/ubuntu/git/llm-energy-tests/scripts/run_benchmark.sh 86400 --throttle 50 >> /var/log/llm_benchmark.log 2>&1
+0 2 * * * /home/ubuntu/git/llm-energy-tests/scripts/run_benchmark_pair.sh 86400 --throttle 50 >> /var/log/llm_benchmark.log 2>&1
 
 # Run overnight benchmarks (2 AM daily)
 # Monitor with: tail -f /var/log/llm_benchmark.log
@@ -450,7 +369,7 @@ sudo ./scripts/run_benchmark.sh 43200 --throttle 75
 chmod +x scripts/*.sh
 
 # Run with sudo
-sudo ./scripts/run_benchmark.sh 3600
+sudo ./scripts/run_benchmark_pair.sh 3600
 ```
 
 ### Issue: "Ollama Connection Refused"
@@ -491,7 +410,7 @@ ollama pull llama3.1:8b
 ollama pull mistral:7b
 
 # Disable throttling for baseline performance
-sudo ./scripts/run_benchmark.sh 3600  # No --throttle flag
+sudo ./scripts/run_benchmark_pair.sh 3600  # No --throttle flag
 
 # Check system resources
 free -h
@@ -509,7 +428,7 @@ ls -la ~/git/llm-energy-tests/logs/
 
 # If missing, create it and run a quick benchmark
 mkdir -p ~/git/llm-energy-tests/logs
-sudo ./scripts/run_benchmark.sh 600
+sudo ./scripts/run_benchmark_pair.sh 600
 ```
 
 ### Issue: Tapo P115 Power Monitor Not Working
@@ -588,17 +507,17 @@ git config --global user.email
 MODELS=("phi3:mini" "qwen2.5:0.5b")
 
 # Run shorter duration (300s = 5 minutes)
-sudo ./scripts/run_benchmark.sh 300
+sudo ./scripts/run_benchmark_pair.sh 300
 ```
 
 ### For Publication-Quality Results
 ```bash
 # Run long benchmarks with consistent conditions
 # 1. No throttling baseline
-sudo ./scripts/run_benchmark.sh 172800  # 48 hours
+sudo ./scripts/run_benchmark_pair.sh 172800  # 48 hours
 
 # 2. Thermal stress case
-sudo ./scripts/run_benchmark.sh 172800 --throttle 75  # 48 hours
+sudo ./scripts/run_benchmark_pair.sh 172800 --throttle 75  # 48 hours
 
 # 3. Compare in dashboard
 ./scripts/run_dashboard.sh
