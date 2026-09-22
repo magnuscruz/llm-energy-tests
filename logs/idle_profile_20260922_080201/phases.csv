@@ -1,0 +1,6 @@
+timestamp,phase
+1790064150,idle_nomodel
+1790064421,idle_model
+1790064661,busy
+1790064905,idle_model_after
+1790065145,done
