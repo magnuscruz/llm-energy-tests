@@ -44,8 +44,9 @@ of turbo from the software-stack drift that separates R1/R2 from the later runs.
 R3 carries three caveats that R1 and R2 do not, and they must travel with any
 number derived from it: its DeepSeek run executed five days after the other
 three and in a different room, following a power interruption; the ambient
-logger covered only 24 % of its window, with a 42.8 h hole inside the DeepSeek
-run; and all four models ran 4.7--5.0 °C hotter than in R1/R2, a uniform offset
+logger covered 1.6 % of its window, all of it inside the DeepSeek run (10.6 %
+covered, with a single 42.8 h hole); the other three models have no indoor
+record at all, see `logs/ambient/README.md`; and all four models ran 4.7--5.0 °C hotter than in R1/R2, a uniform offset
 consistent with room ambient rather than with anything in the node.
 
 ## Excluded: silently mis-throttled (2 campaigns)
