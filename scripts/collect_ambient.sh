@@ -12,7 +12,24 @@
 
 set -uo pipefail
 CAMPAIGN="${1:?usage: $0 <campaign-dir> [user@pi] [remote-file]}"
-PI="${2:-magnuspi@192.168.7.2}"
+# Candidate addresses, tried in order when none is given. The USB gadget used to
+# be the default on its own, and that is why the ambient log for campaign R3 was
+# never collected: the gadget link has never come up at this site, the copy
+# failed at the end of every campaign, and nobody was watching at that moment.
+# The Wi-Fi address is therefore tried first, and PI_HOST overrides the lot.
+PI_CANDIDATES="${PI_HOST:-magnuspi@magnuspi.local magnuspi@192.168.0.158 magnuspi@192.168.7.2}"
+PI="${2:-}"
+if [ -z "$PI" ]; then
+  for cand in $PI_CANDIDATES; do
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new \
+           "$cand" 'exit' 2>/dev/null; then
+      PI="$cand"; echo "[+] reached the Pi at $cand"; break
+    fi
+    echo "[-] no answer from $cand"
+  done
+  [ -n "$PI" ] || { echo "[!] the Pi answered at none of: $PI_CANDIDATES" >&2
+                    echo "    set PI_HOST, or pass user@host as the second argument" >&2; exit 1; }
+fi
 REMOTE="${3:-/home/magnuspi/ambient.csv}"
 
 DEST="$CAMPAIGN/deep_aging"
