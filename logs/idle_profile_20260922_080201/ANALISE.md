@@ -26,8 +26,9 @@ draw is paid per second whether or not there is work.
 
 **Holding a model resident is free.** 30.5 W with `qwen2.5:0.5b` in memory
 against a 30.0 W median without it. An orchestrator has no energy reason to
-evict weights between requests. Untested for a large model: Llama 3.1 8B holds
-5.5 GB against Qwen's 0.7 GB, and DRAM refresh may not stay free at that size.
+evict weights between requests. This was measured again for Llama 3.1 8B, which
+holds 5.5 GB against Qwen's 0.7 GB, in case DRAM refresh stopped being free at
+that size: it does not. See `logs/idle_profile_20260922_174138`.
 
 **There is no hysteresis.** Idle after load returns to 30.5 W, identical to idle
 before it, so the states can be treated as memoryless by a controller.
@@ -52,7 +53,6 @@ floor was measured because it looked capable of overturning the recommendation.
 
 ## Not yet measured
 
-- Residency cost for a large model (Llama 3.1 8B, 5.5 GB).
 - Idle under `performance` vs `powersave` governor; changing it needs `sudo`.
 - True suspend. The 30 W floor is with the system awake throughout, which is the
   only regime where a race-to-sleep argument could still be recovered.

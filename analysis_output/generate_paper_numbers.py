@@ -492,6 +492,49 @@ def turbo_macros(tj, pw, tps):
     return out
 
 
+# Cap adherence, for the methodology's verification table. Each entry names the
+# campaign that carries 1 Hz per-core frequency telemetry for that condition,
+# which is not always the campaign whose results are reported: 62.5% and 75%
+# predate the telemetry, so their adherence is measured on the replication run
+# at the same nominal cap. The table in methodology/index.tex must say so.
+CAP_ADHERENCE = {
+    "Fifty":           ("2026-07-19_48h_50_throttling",   1750, "reported"),
+    "SixtyTwoFive":    ("2026-07-27_48h_62_5_throttling", 2188, "replication"),
+    "SeventyFive":     ("2026-08-08_48h_75_throttling",   2625, "replication"),
+    "EightySevenFive": ("2026-08-18_48h_87_5_throttling", 3063, "reported"),
+    "Hundred":         ("2026-08-29_48h_100_throttling",  3500, "reported"),
+}
+
+
+def cap_adherence_macros():
+    """Sustained frequency against nominal cap, per condition.
+
+    This answers a question about the apparatus, not about the models: did the
+    cap the orchestration requested actually hold for 48 hours? Two campaigns
+    silently did not, which is why the check exists and why it is reported.
+    """
+    out = {}
+    for tag, (folder, cap, _src) in CAP_ADHERENCE.items():
+        means = []
+        for key in MODELS.values():
+            path = os.path.join(REPO, "logs", folder, "deep_aging",
+                                f"{key}_48.00h_merged_analysis.csv")
+            d = pd.read_csv(path, low_memory=False)
+            col = d["freq_khz_max_mean"].dropna()
+            # No blanket try/except here on purpose. An earlier version swallowed
+            # a NameError and emitted nothing, which reads on the page as "this
+            # condition has no telemetry" rather than as a broken generator.
+            # A campaign listed here is asserted to carry frequency telemetry;
+            # if it does not, this should fail loudly.
+            if col.empty:
+                raise RuntimeError(f"{folder}/{key}: no frequency telemetry")
+            means.append(col.mean() / 1000.0)
+        out[f"adh{tag}Lo"] = r(min(means))
+        out[f"adh{tag}Hi"] = r(max(means))
+        out[f"adh{tag}Pct"] = r(100 * (sum(means) / len(means)) / cap)
+    return out
+
+
 def main():
     d = pd.read_csv(DATA, low_memory=False)
 
@@ -505,6 +548,7 @@ def main():
     macros.update(ce_sensitivity_macros(pivot("tokens_per_joule")))
     macros.update(throughput_power_macros(pivot(TPS), pivot("watts_mean")))
     macros.update(turbo_macros(pivot("tokens_per_joule"), pivot("watts_mean"), pivot(TPS)))
+    macros.update(cap_adherence_macros())
     macros.update(drift_macros(d))
     macros.update(phi_decline_macros(d))
     macros.update(volume_macros())
