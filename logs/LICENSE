@@ -1,0 +1,46 @@
+# Measurement data licence
+
+The telemetry in this directory is licensed under the Creative Commons
+Attribution 4.0 International Licence (CC BY 4.0).
+
+Full text: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary:   https://creativecommons.org/licenses/by/4.0/
+
+You are free to share and adapt this data for any purpose, including
+commercially, provided you give appropriate credit, link to the licence, and
+indicate whether changes were made.
+
+## What this covers
+
+Every file under `logs/`: the per-campaign directories with their inference,
+power and per-core frequency streams and the fused `*_merged_analysis.csv`, the
+idle and residency profiles, the indoor ambient record under `logs/ambient/`,
+and `MANIFEST.md`.
+
+The software that produced and analyses this data is separately licensed under
+the MIT Licence; see `../LICENSE`.
+
+## How to attribute
+
+Cite the paper. `CITATION.cff` in the repository root carries the machine-
+readable form, and GitHub renders a "Cite this repository" button from it.
+
+## Read this before you use the data
+
+`MANIFEST.md` is not optional reading. Thirteen 48-hour campaigns were run and
+seven feed the reported results; two of the excluded ones silently executed
+without an effective frequency cap and are superseded by verified
+re-executions. Which campaigns belong in an analysis, and why, is recorded
+there. Analysing the wrong subset is the easiest mistake to make with this
+data, and it is one we made ourselves before the manifest existed.
+
+Two further cautions, both learned the hard way and both documented in
+`../CLAUDE.md`:
+
+- Filenames encode the target, not the achievement. Every file is named
+  `*_48.00h_*` regardless of what completed. One run carries 40.1 h of power
+  telemetry rather than 48. Check spans before trusting a campaign.
+- `analysis_output/combined_dataset.csv.gz` carries a 60-sample moving average
+  and drops rows whose power sample is missing. It is built for figures. Do not
+  count events from it; recompute from the per-campaign
+  `*_merged_analysis.csv`, which is one row per inference event.

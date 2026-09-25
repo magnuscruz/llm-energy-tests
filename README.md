@@ -10,7 +10,6 @@ app_file: app.py
 pinned: false
 ---
 
-<!-- removed: browser cookie header pasted here in error -->
 
 # LLM Energy Tests: Software Aging & Carbon-Aware Resilience in Edge-Deployed LLMs
 
@@ -370,16 +369,27 @@ git push origin main
 
 ## Citation
 
-If you use this research framework in your work, please cite:
+If you use this data or code, please cite the work. `CITATION.cff` in the
+repository root carries the machine-readable form, and GitHub renders a "Cite
+this repository" button from it.
 
 ```bibtex
-@article{cruz2026software,
-  title={Software Aging and Carbon-Aware Resilience in Edge-Deployed LLMs},
-  author={Cruz, Magnus and Torquato, Matheus},
-  journal={Department of Informatics Engineering, University of Coimbra},
-  year={2026}
+@unpublished{cruz2026ecological,
+  title  = {Ecological Efficiency and Systemic Degradation of Large Language
+            Models Under Sustained Edge Inference},
+  author = {Cruz, Magnus and Torquato, Matheus},
+  note   = {Manuscript in preparation, University of Coimbra, CISUC/LASI, DEI},
+  year   = {2026}
 }
 ```
+
+This entry will be replaced by the published reference once the paper appears.
+
+**Before analysing the data, read [`logs/MANIFEST.md`](logs/MANIFEST.md).**
+Thirteen 48-hour campaigns were run and seven feed the reported results. Two of
+the excluded ones silently executed without an effective frequency cap and are
+superseded by verified re-executions. Which campaigns belong in an analysis, and
+why the others do not, is recorded there.
 
 ---
 
@@ -403,3 +413,16 @@ If you use this research framework in your work, please cite:
 
 **Maintained by**: DEI Research Lab, University of Coimbra  
 **Last Updated**: May 11, 2026
+
+## Licensing
+
+Two licences apply, because the repository holds two different things.
+
+- **Software** (`src/`, `scripts/`, `analysis_output/`, documentation): MIT.
+  See [`LICENSE`](LICENSE).
+- **Measurement data** (everything under `logs/`): Creative Commons Attribution
+  4.0 International. See [`logs/LICENSE`](logs/LICENSE).
+
+The split is deliberate. The code should be reusable without friction; the data
+carries an attribution requirement, so that work building on these measurements
+cites where they came from.

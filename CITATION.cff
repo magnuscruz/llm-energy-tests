@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+title: >-
+  LLM Energy Tests: sustained-inference energy and reliability
+  measurements for LLMs on a CPU-only edge node
+message: >-
+  If you use this dataset or code, please cite it. Once the
+  accompanying paper is published, cite that instead and add its
+  reference here as preferred-citation.
+type: dataset
+authors:
+  - given-names: Magnus
+    family-names: Cruz
+    orcid: 'https://orcid.org/0009-0007-0805-8740'
+    affiliation: 'University of Coimbra, CISUC/LASI, DEI'
+  - given-names: Matheus
+    family-names: Torquato
+    orcid: 'https://orcid.org/0000-0003-3211-7951'
+    affiliation: 'University of Coimbra, CISUC/LASI, DEI'
+repository-code: 'https://github.com/magnuscruz/llm-energy-tests'
+abstract: >-
+  Telemetry and analysis pipeline behind a longitudinal study of
+  large language model inference on a CPU-only edge node. Four
+  architecturally distinct models (Qwen2.5 0.5B, Phi-3 Mini,
+  Llama 3.1 8B, DeepSeek-v2 Lite) were each held under continuous
+  inference for 48 hours across six CPU frequency-capping
+  scenarios, totalling 1,152 hours of load, 296,064 inference
+  events and 4.8 million out-of-band wall-plug power samples.
+  The repository contains the raw per-campaign streams, the fusion
+  and analysis code, and a manifest recording which campaigns feed
+  the reported results and why the others do not.
+keywords:
+  - large language models
+  - edge computing
+  - energy efficiency
+  - software aging
+  - frequency scaling
+  - carbon-aware computing
+  - sustained inference
+license: MIT
+license-url: 'https://github.com/magnuscruz/llm-energy-tests/blob/main/LICENSE'
