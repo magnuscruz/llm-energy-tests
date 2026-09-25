@@ -17,6 +17,16 @@ authors:
     orcid: 'https://orcid.org/0000-0003-3211-7951'
     affiliation: 'University of Coimbra, CISUC/LASI, DEI'
 repository-code: 'https://github.com/magnuscruz/llm-energy-tests'
+doi: '10.5281/zenodo.22956235'
+version: v1.0.0
+date-released: '2026-09-25'
+identifiers:
+  - type: doi
+    value: '10.5281/zenodo.22956235'
+    description: 'This release (v1.0.0), which supports the reported results'
+  - type: doi
+    value: '10.5281/zenodo.22956234'
+    description: 'All versions of this dataset'
 abstract: >-
   Telemetry and analysis pipeline behind a longitudinal study of
   large language model inference on a CPU-only edge node. Four

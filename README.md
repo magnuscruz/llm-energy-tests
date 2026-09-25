@@ -13,6 +13,10 @@ pinned: false
 
 # LLM Energy Tests: Software Aging & Carbon-Aware Resilience in Edge-Deployed LLMs
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22956235.svg)](https://doi.org/10.5281/zenodo.22956235)
+[![Code: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+[![Data: CC BY 4.0](https://img.shields.io/badge/data-CC%20BY%204.0-lightgrey.svg)](logs/LICENSE)
+
 Research benchmark framework investigating long-term sustainability of Large Language Models deployed on edge hardware under continuous workloads.
 
 **Paper**: "Software Aging and Carbon-Aware Resilience in Edge-Deployed LLMs" - DEI, UC, Portugal
@@ -384,6 +388,8 @@ this repository" button from it.
 ```
 
 This entry will be replaced by the published reference once the paper appears.
+
+The archived release is **[doi:10.5281/zenodo.22956235](https://doi.org/10.5281/zenodo.22956235)**, which is the version the reported results were computed from. [doi:10.5281/zenodo.22956234](https://doi.org/10.5281/zenodo.22956234) resolves to the most recent version instead, and is the one to use when referring to the dataset in general rather than to the results.
 
 **Before analysing the data, read [`logs/MANIFEST.md`](logs/MANIFEST.md).**
 Thirteen 48-hour campaigns were run and seven feed the reported results. Two of
