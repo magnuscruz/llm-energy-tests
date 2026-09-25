@@ -46,5 +46,9 @@ keywords:
   - frequency scaling
   - carbon-aware computing
   - sustained inference
-license: MIT
-license-url: 'https://github.com/magnuscruz/llm-energy-tests/blob/main/LICENSE'
+# Two licences apply: MIT covers src/, scripts/, analysis_output/ and the
+# documentation; CC-BY-4.0 covers the measurement data under logs/. Anyone
+# reusing the data owes attribution, which a bare "MIT" here would hide.
+license:
+  - MIT
+  - CC-BY-4.0
