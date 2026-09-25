@@ -1,0 +1,39 @@
+{
+  "upload_type": "dataset",
+  "title": "LLM Energy Tests: sustained-inference energy and reliability measurements for LLMs on a CPU-only edge node",
+  "description": "<p>Telemetry and analysis pipeline behind a longitudinal study of large language model inference on a CPU-only edge node. Four architecturally distinct models (Qwen2.5 0.5B, Phi-3 Mini, Llama 3.1 8B, DeepSeek-v2 Lite) were each held under continuous inference for 48 hours across six CPU frequency-capping scenarios, totalling 1,152 hours of load, 296,064 inference events and 4.8 million out-of-band wall-plug power samples at 1 Hz.</p><p>The archive contains the raw per-campaign streams (inference events, wall-plug power, per-core frequency), the fused per-event records, the indoor ambient record, the campaign orchestration, and the fusion and analysis code.</p><p><strong>Read <code>logs/MANIFEST.md</code> before analysing the data.</strong> Thirteen campaigns were run and seven feed the reported results. Two of the excluded ones silently executed without an effective frequency cap and are superseded by verified re-executions. Analysing the wrong subset is the easiest mistake to make with this data. Two further cautions are recorded there and in <code>logs/LICENSE</code>: filenames encode the target rather than what actually completed, so spans must be checked before a campaign is trusted; and <code>analysis_output/combined_dataset.csv.gz</code> carries a moving average and drops rows with missing power samples, so it is built for figures and must not be counted from.</p><p><strong>Licensing.</strong> Two licences apply. The measurement data under <code>logs/</code> is released under CC BY 4.0, which is the licence recorded on this record. The software (<code>src/</code>, <code>scripts/</code>, <code>analysis_output/</code>) is released under the MIT Licence; see <code>LICENSE</code> in the archive.</p>",
+  "creators": [
+    {
+      "name": "Cruz, Magnus",
+      "affiliation": "University of Coimbra, CISUC/LASI, DEI",
+      "orcid": "0009-0007-0805-8740"
+    },
+    {
+      "name": "Torquato, Matheus",
+      "affiliation": "University of Coimbra, CISUC/LASI, DEI",
+      "orcid": "0000-0003-3211-7951"
+    }
+  ],
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "language": "eng",
+  "keywords": [
+    "large language models",
+    "edge computing",
+    "energy efficiency",
+    "software aging",
+    "frequency scaling",
+    "carbon-aware computing",
+    "sustained inference",
+    "CPU frequency capping",
+    "tokens per joule"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/magnuscruz/llm-energy-tests",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "notes": "The measurement data is CC BY 4.0; the software in the same archive is MIT. Zenodo records a single licence, so the more restrictive of the two is declared here to avoid implying that the data may be reused without attribution."
+}
