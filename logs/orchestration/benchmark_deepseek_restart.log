@@ -1,0 +1,31 @@
+nohup: ignoring input
+[!] Model set overridden: deepseek-v2:lite
+[!] Writing into existing campaign: /home/ubuntu/git/llm-energy-tests/logs/2026-09-07
+==========================================================
+Preparing to Benchmark: deepseek-v2:lite
+==========================================================
+Running Fully Unthrottled.
+[Verify] scaling_max_freq: P-core=4800000 E-core=3500000 | governor=performance | EPP=performance
+Warmup Phase: Running for 600 seconds to stabilize performance...
+[?2026h[?25l[1Gpulling manifest ⠋ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest ⠹ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest ⠹ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest ⠼ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest ⠼ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest ⠦ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest ⠦ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest ⠇ [K[?25h[?2026l[?2026h[?25l[1Gpulling manifest [K
+pulling d8d69f2a1bfa: 100% ▕██████████████████▏ 8.9 GB                         [K
+pulling b321cd7de6c7: 100% ▕██████████████████▏  111 B                         [K
+pulling 4bb71764481f: 100% ▕██████████████████▏  13 KB                         [K
+pulling 19f2fb9e8bc6: 100% ▕██████████████████▏   32 B                         [K
+pulling 2b2c35718a16: 100% ▕██████████████████▏  494 B                         [K
+verifying sha256 digest [K
+writing manifest [K
+success [K[?25h[?2026l
+[*] Executing 600s Warm-Up Phase...
+Warm-Up Complete. Starting 48.00-hour Continuous Evaluation for deepseek-v2:lite...
+Performing Proactive Software Rejuvenation (Zero-State Reset)...
+Running Fully Unthrottled.
+[Verify] scaling_max_freq: P-core=4800000 E-core=3500000 | governor=performance | EPP=performance
+----------------------------------------------------------
+[*] Executing Continuous Deep Aging Phase (172800 seconds)...
+Starting 48.00-hour continuous evaluation. Logging to /home/ubuntu/git/llm-energy-tests/logs/2026-09-07/deep_aging/deepseek-v2_lite_48.00h_inference.csv
+deleted 'deepseek-v2:lite'
+Completed 48.00 hours for deepseek-v2:lite.
+Model Pair Benchmarking Complete.
+Benchmark Suite Finished Successfully.
+Interrupt received. Cleaning up...
