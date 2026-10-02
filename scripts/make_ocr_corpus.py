@@ -14,7 +14,7 @@ and the character offsets into each source file are all fixed, so two runs
 produce the same images and two conditions see the same prefill cost.
 
 Usage:
-    python3 scripts/make_ocr_corpus.py [out_dir]   # default: logs/ocr_corpus
+    python3 scripts/make_ocr_corpus.py [full|compact] [out_dir]
 """
 import os
 import sys
@@ -22,11 +22,22 @@ import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 
-# A4 at roughly 125 dpi. Large enough that a page of text is a realistic prefill
-# load, small enough that a vision encoder on a CPU does not take minutes.
-PAGE_W, PAGE_H = 1024, 1448
-MARGIN = 72
-PT = 19
+# Page geometry. The first pilot rendered A4 at roughly 125 dpi, 1024x1448, and
+# that was a mistake worth recording: the vision encoder turned such a page into
+# about 7,330 prompt tokens regardless of what was asked of it, which fixed the
+# workload in the prefill-dominated regime and made the decode-dominated arm
+# unreachable by prompting. It also cost about 270 s per inference, with the
+# denser pages timing out entirely.
+#
+# Halving the linear dimensions quarters the patch count and so the prefill
+# cost. Point size is deliberately NOT reduced with it: legibility for OCR
+# depends on pixels per character, not on the nominal page size, so the smaller
+# page carries less text at the same readability rather than the same text
+# smaller.
+PROFILES = {
+    "full":    dict(w=1024, h=1448, margin=72, pt=19),
+    "compact": dict(w=512,  h=724,  margin=40, pt=19),
+}
 LINE_SPACING = 1.45
 
 FONT_CANDIDATES = [
@@ -49,10 +60,10 @@ PAGES = [
 ]
 
 
-def load_font():
+def load_font(pt):
     for p in FONT_CANDIDATES:
         if os.path.exists(p):
-            return ImageFont.truetype(p, PT), p
+            return ImageFont.truetype(p, pt), p
     raise SystemExit("no usable serif font found; install fonts-dejavu")
 
 
@@ -72,10 +83,16 @@ def clean(s):
 
 def main():
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(repo, "logs", "ocr_corpus")
+    profile = sys.argv[1] if len(sys.argv) > 1 else "compact"
+    if profile not in PROFILES:
+        raise SystemExit(f"profile must be one of {list(PROFILES)}")
+    g = PROFILES[profile]
+    PAGE_W, PAGE_H, MARGIN, PT = g["w"], g["h"], g["margin"], g["pt"]
+    out_dir = sys.argv[2] if len(sys.argv) > 2 else os.path.join(repo, "logs", f"ocr_corpus_{profile}")
     os.makedirs(out_dir, exist_ok=True)
+    print(f"  profile {profile}: {PAGE_W}x{PAGE_H}, {PT}pt")
 
-    font, font_path = load_font()
+    font, font_path = load_font(PT)
     line_h = int(PT * LINE_SPACING)
     usable_w = PAGE_W - 2 * MARGIN
     max_lines = (PAGE_H - 2 * MARGIN) // line_h
