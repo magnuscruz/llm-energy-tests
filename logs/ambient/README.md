@@ -31,3 +31,21 @@ This supersedes an earlier figure of "24 % of the window" that reached
 file was ever copied off the Pi and is not reproducible from it. The true
 coverage is far lower, and the more consequential fact is not the percentage but
 that three of the four runs have none.
+
+## Collection history
+
+| collected | lines | span | coverage | largest gap |
+|---|---|---|---|---|
+| `ambient_20260924.csv` | 212,835 | 138.2 h | — | 42.8 h |
+| `ambient_20261002.csv` | 871,519 | 329.7 h | 73.5 % | 42.8 h |
+
+The file on the Pi is cumulative and is not truncated between collections, so
+each file supersedes the one before it. They are kept separately rather than
+replaced because a collection is evidence of what the record looked like on the
+day it was taken.
+
+Coverage is the fraction of the window within five minutes of a sample. At
+73.5 % over fourteen days the sensor is losing roughly a quarter of the time, in
+nine episodes longer than five minutes, the three largest being 42.8 h, 29.2 h
+and 8.5 h. That is a reliability problem in the instrument, not an occasional
+glitch, and `src/ambient_logger.py` records what is known about its cause.
