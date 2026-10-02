@@ -41,6 +41,7 @@ CMD_SINGLE_HIGH_REP = (0x24, 0x00)   # single shot, clock stretching disabled
 MEAS_DELAY_S = 0.016         # datasheet: 15 ms max for high repeatability
 SYNC_EVERY = 60              # samples between fsync; see the write loop
 MAX_LAG_S = 5.0              # cadence resyncs past this; see schedule_next()
+REOPEN_AFTER = (5, 30, 120)  # consecutive failures that trigger a bus reopen
 
 
 def crc8(data: bytes) -> int:
@@ -142,7 +143,8 @@ def main():
                 time.sleep(max(0.0, next_at - time.monotonic()))
         return
 
-    with SMBus(I2C_BUS) as bus, open(args.output, "a", buffering=1) as fh:
+    bus = SMBus(I2C_BUS)
+    with open(args.output, "a", buffering=1) as fh:
         if fh.tell() == 0:
             fh.write("timestamp,ambient_c,humidity_pct\n")
         # Drift-free cadence: schedule against a fixed origin rather than
@@ -164,6 +166,27 @@ def main():
                     print(f"[ambient] I2C read failed ({errors} in a row): {exc}",
                           file=sys.stderr, flush=True)
                 sample = None
+
+                # Retrying an identical ioctl cannot clear a wedged bus, and
+                # that is how a single failure became 30,449 of them in a row:
+                # eight and a half hours with no record, ended by nothing we
+                # did. Close and reopen the device instead, which reinitialises
+                # the kernel side and clears some lockups. The cadence below is
+                # geometric so a sensor that is simply absent does not spend the
+                # day reopening a file descriptor.
+                if errors in REOPEN_AFTER or (errors > max(REOPEN_AFTER)
+                                              and errors % 600 == 0):
+                    try:
+                        bus.close()
+                    except Exception:
+                        pass
+                    try:
+                        bus = SMBus(I2C_BUS)
+                        print(f"[ambient] reopened the bus after {errors} failures",
+                              file=sys.stderr, flush=True)
+                    except Exception as reopen_exc:
+                        print(f"[ambient] could not reopen the bus: {reopen_exc}",
+                              file=sys.stderr, flush=True)
             else:
                 if errors:
                     print(f"[ambient] sensor recovered after {errors} failed reads",
