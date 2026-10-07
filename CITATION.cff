@@ -11,11 +11,11 @@ authors:
   - given-names: Magnus
     family-names: Cruz
     orcid: 'https://orcid.org/0009-0007-0805-8740'
-    affiliation: 'University of Coimbra, CISUC/LASI, DEI'
+    affiliation: 'University of Coimbra, CISUC/SSE, DEI'
   - given-names: Matheus
     family-names: Torquato
     orcid: 'https://orcid.org/0000-0003-3211-7951'
-    affiliation: 'University of Coimbra, CISUC/LASI, DEI'
+    affiliation: 'University of Coimbra, CISUC/SSE, DEI'
 repository-code: 'https://github.com/magnuscruz/llm-energy-tests'
 doi: '10.5281/zenodo.22956235'
 version: v1.0.0

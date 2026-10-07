@@ -382,7 +382,7 @@ this repository" button from it.
   title  = {Ecological Efficiency and Systemic Degradation of Large Language
             Models Under Sustained Edge Inference},
   author = {Cruz, Magnus and Torquato, Matheus},
-  note   = {Manuscript in preparation, University of Coimbra, CISUC/LASI, DEI},
+  note   = {Manuscript in preparation, University of Coimbra, CISUC/SSE, DEI},
   year   = {2026}
 }
 ```
