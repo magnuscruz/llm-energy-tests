@@ -35,8 +35,11 @@ from generate_efficiency_curve_figure import (
     SURFACE, INK_PRIMARY, INK_SECONDARY, INK_MUTED, BASELINE, CRITICAL_RED,
 )
 
+# The tikzposter draft is gone and the CISUC poster now keeps its own assets,
+# so the figure is written straight into them.
 POSTER_DIR = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "..", "..", "IEEETransactions", "poster"))
+    os.path.dirname(__file__), "..", "..", "IEEETransactions",
+    "poster-cisuc", "images"))
 
 # The poster's own palette, so the figure does not arrive from a different
 # document. ink/slate/accent are the three colours main.tex defines.
@@ -50,7 +53,7 @@ POSTER_ACCENT = "#C2552E"
 # 17 pt label lands at about 14.5 pt. The body text around it is 21.5 pt. Making
 # the figure canvas smaller is what buys that: the same labels on a 9 in canvas
 # would print at 7.7 pt, which is the size they were before this was measured.
-FIG_W, FIG_H = 5.4, 3.6
+FIG_W, FIG_H = 5.4, 4.6
 PT = dict(base=15, tick=16, axis=17, curve=17, legend=15)
 
 plt.rcParams.update({
@@ -76,7 +79,7 @@ def main():
     ax.axhline(100, color=BASELINE, linewidth=1.2, linestyle=(0, (4, 3)), zorder=2)
 
     xs = [CONDITION_MHZ[c] for c in ORDER]
-    handles = []
+    handles, drawn = [], []
     for model_key, style in MODEL_STYLE.items():
         base = tj[(model_key, "R1")]
         ys = [100.0 * tj[(model_key, c)] / base for c in ORDER]
@@ -87,6 +90,7 @@ def main():
         ax.scatter([xs[peak_i]], [ys[peak_i]], marker="*", s=420,
                    color=CRITICAL_RED, edgecolor="white", linewidth=1.0, zorder=5)
         handles.append(line)
+        drawn.append(ys)
         print(f"  {style['label']:<18} peak {max(ys):6.1f}% at "
               f"{CONDITION_LABEL[ORDER[peak_i]].replace(chr(10), ' ')}")
 
@@ -96,8 +100,8 @@ def main():
                                           .replace("%", "")
                         for c in ORDER], fontsize=PT["tick"])
     ax.tick_params(axis="y", labelsize=PT["tick"])
-    ax.set_xlabel("Sustained clock, as a \\% of rated speed".replace("\\", ""),
-                  fontsize=PT["axis"], labelpad=6)
+    ax.set_xlabel("Sustained clock, % of rated speed", fontsize=PT["axis"],
+                  labelpad=8)
     ax.set_ylabel("Tokens per joule\n(uncapped $=100$)", fontsize=PT["axis"],
                   labelpad=6)
     ax.grid(True, axis="y", linewidth=0.8, alpha=0.7)
@@ -105,13 +109,20 @@ def main():
         ax.spines[spine].set_visible(False)
 
     span = xs[-1] - xs[0]
-    ax.set_xlim(xs[0] - 0.04 * span, xs[-1] + 0.04 * span)
-    ax.set_ylim(92, max(ax.get_ylim()[1], 180))
+    # The last tick is a word, not a number, so it needs more room than the
+    # others or it runs off the canvas.
+    ax.set_xlim(xs[0] - 0.05 * span, xs[-1] + 0.09 * span)
+    # The curves live between 100 and 174. Padding the axis down to 92 spent a
+    # tenth of the height on nothing and pressed the four curves together; with
+    # the legend out of the plot there is no reason to keep that room, so the
+    # axis is cut to the data and the same curves are drawn further apart.
+    lo = min(min(v) for v in drawn) - 3
+    hi = max(max(v) for v in drawn) + 4
+    ax.set_ylim(lo, hi)
 
-    # Naming each curve at its left end needed a third of the width in headroom,
-    # which a 117 mm column does not have: the labels landed on top of the axis
-    # and of each other. A legend in the empty lower-left corner costs nothing,
-    # because every curve ends at 100 on the right.
+    # The legend was in the lower-left corner of the plot, which cost the curves
+    # the room they needed to separate. Below the axis it costs only canvas,
+    # which is cheaper.
     handles += [
         plt.Line2D([0], [0], color="none", marker="*", markersize=17,
                    markerfacecolor=CRITICAL_RED, markeredgecolor="white",
@@ -119,13 +130,23 @@ def main():
         plt.Rectangle((0, 0), 1, 1, color=POSTER_SLATE, alpha=0.18,
                       label="62.5\u201375\u2009% band"),
     ]
-    ax.legend(handles=handles, loc="lower left", frameon=False, ncol=2,
-              fontsize=PT["legend"], handletextpad=0.5, columnspacing=1.2,
-              labelspacing=0.35, borderaxespad=0.3)
+    # On the FIGURE, not on the axes, and the strip for it is reserved with
+    # subplots_adjust. Hung off the axes instead, it was wider than they were,
+    # and bbox_inches="tight" then grew the canvas sideways -- which silently
+    # shrinks everything once the result is scaled to a fixed column width.
+    # Two columns, not three: three made the legend wider than the canvas and
+    # it was clipped at both ends. The left margin holds a two-line y label at
+    # 17 pt, which 0.165 did not.
+    fig.subplots_adjust(left=0.215, right=0.965, top=0.97, bottom=0.355)
+    fig.legend(handles=handles, loc="lower center", frameon=False, ncol=2,
+               fontsize=PT["legend"], handletextpad=0.5, columnspacing=1.6,
+               labelspacing=0.55, borderaxespad=0.5)
 
-    fig.tight_layout()
+    # No tight_layout and no bbox_inches: the canvas must stay exactly
+    # FIG_W x FIG_H, because every type size here was chosen against the
+    # 116.8 mm column it is printed in.
     out = os.path.join(POSTER_DIR, "efficiency_vs_cap_poster.pdf")
-    fig.savefig(out, facecolor="white", bbox_inches="tight")
+    fig.savefig(out, facecolor="white")
     plt.close(fig)
     print(f"\nwrote {out}")
 
