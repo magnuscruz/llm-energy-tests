@@ -480,3 +480,31 @@ pattern and takes the most recent; two files there is a silent coin toss.
 `scripts/deploy_pi.sh` and `scripts/collect_ambient.sh` still work and are
 left in place. They are the path for the I2C sensor if it is ever wanted back,
 or for running a second sensor off the node as a cross-check.
+
+### Verifying the sensor from Windows, before going anywhere
+
+The laptop has Bluetooth; WSL2 does not. `bleak` works on Windows, and both
+scripts are stdlib plus `bleak`, with nothing Linux-specific in them. So the
+decode can be confirmed at home, against the sensor on the desk, days before
+the node is touched. In PowerShell:
+
+```powershell
+py -m pip install bleak thermopro-ble
+$repo = "\\wsl.localhost\Ubuntu-24.04\home\magnus\git\llm-energy-tests"
+py "$repo\scripts\ble_probe_thermopro.py" --seconds 90
+```
+
+If PowerShell objects to the UNC path, copy the two files somewhere local
+first; they have no other dependency on the repository.
+
+Compare what prints against the sensor's own screen. A match here means the
+`--install` step on the node is a formality rather than a gamble, which is the
+whole point of doing it early. Note that Windows cannot scan in passive mode,
+so bleak will scan actively instead -- the sensor is unaffected, it broadcasts
+either way, and only the radio behaviour of the laptop differs.
+
+A minute of logging can be exercised there too, without a sensor:
+
+```powershell
+py "$repo\src\ambient_logger_ble.py" sample.csv --simulate --interval 2 --scan-window 1
+```

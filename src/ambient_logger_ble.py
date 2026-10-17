@@ -53,9 +53,20 @@ def decode(company_id: int, payload: bytes):
     """Decode a TP3-family advertisement, or return None.
 
     The layout is thermopro-ble's for the TP357S/TP397/TP393 family, which the
-    TP351S is assumed to share until scripts/ble_probe_thermopro.py confirms
-    it against the sensor's own display. Indices are into company-id plus
-    payload, matching how that library slices it.
+    TP351S is assumed to share until scripts/ble_probe_thermopro.py confirms it
+    against the sensor's own display.
+
+    THE INDEXING LOOKS WRONG AND IS NOT. Temperature is read from data[1:3],
+    where data is the company id followed by the payload -- so it straddles the
+    company id's high byte and the payload's first byte. That is not an
+    off-by-one. These sensors do not use an assigned company identifier: they
+    broadcast a flat frame, and BlueZ (and WinRT) split its first two bytes off
+    as a company id because that is what the manufacturer-data field means.
+    Reassembling them is what puts the frame back together. The on-air layout
+    is one spare byte, then int16 little-endian temperature in tenths, then
+    humidity, then battery flags. Verified against thermopro-ble's own source,
+    not inferred: an earlier attempt to test this function failed because the
+    TEST built the frame the obvious way, and the obvious way is wrong.
     """
     data = struct.pack("<H", company_id) + payload
     if len(data) < 5:
