@@ -121,7 +121,7 @@ def render(tj, t):
                                           .replace("%", "")
                         for c in ORDER], fontsize=PT["tick"])
     ax.tick_params(axis="y", labelsize=PT["tick"])
-    ax.set_xlabel("Sustained clock, % of rated speed", fontsize=PT["axis"],
+    ax.set_xlabel("Cap, % of the 3.5 GHz E-core ceiling", fontsize=PT["axis"],
                   labelpad=6)
     ax.set_ylabel("Tokens per joule\n(uncapped $=100$)", fontsize=PT["axis"],
                   labelpad=5)
