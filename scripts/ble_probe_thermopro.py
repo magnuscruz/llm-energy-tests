@@ -17,11 +17,14 @@ created on either side, and the sensor does not know it was watched. For each
 advertisement from a TP3x device it prints the raw manufacturer payload, what
 thermopro-ble makes of it, and what the documented byte layout would give
 independently. If those two disagree, the layout does not hold for this model
-and we decode it ourselves; if they agree and match the sensor's own display,
-we are done.
+and we decode it ourselves; if they agree and match the vendor app, we are
+done.
 
-Compare against the number on the sensor's screen while it runs. That is the
-ground truth here, not either decoder.
+The sensor has no display, so the reference is the vendor phone app showing
+it. Have the app open on the same reading while this runs: the app is the
+ground truth here, not either decoder. This never connects to the sensor, so
+it cannot interfere with whatever the app is doing, and the sensor keeps
+broadcasting either way.
 
 Needs: pip install bleak thermopro-ble
 """
@@ -116,7 +119,7 @@ async def main():
         print()
 
     print(f"scanning passively for {a.seconds:.0f} s -- "
-          f"compare what prints against the sensor's own display\n")
+          f"compare what prints against the vendor app's reading\n")
     scanner = BleakScanner(detection_callback=on_adv)
     await scanner.start()
     await asyncio.sleep(a.seconds)

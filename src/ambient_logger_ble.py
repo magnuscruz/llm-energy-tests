@@ -54,7 +54,7 @@ def decode(company_id: int, payload: bytes):
 
     The layout is thermopro-ble's for the TP357S/TP397/TP393 family, which the
     TP351S is assumed to share until scripts/ble_probe_thermopro.py confirms it
-    against the sensor's own display.
+    against the vendor app. The sensor has no display of its own.
 
     THE INDEXING LOOKS WRONG AND IS NOT. Temperature is read from data[1:3],
     where data is the company id followed by the payload -- so it straddles the

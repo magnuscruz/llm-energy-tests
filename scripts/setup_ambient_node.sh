@@ -89,14 +89,15 @@ done
 [ "$MODE" = check ] && { say; say "[+] checks pass. Re-run without --check to probe and install."; exit 0; }
 
 say "[4/5] what the sensor actually says"
-say "      Compare the decoded values against the sensor's own screen."
-say "      They are the ground truth, not the decoder."
+say "      The sensor has no display. Compare the decoded values against"
+say "      the vendor phone app showing it -- the app is the reference,"
+say "      not either decoder."
 say
 "$PY" "$REPO/scripts/ble_probe_thermopro.py" --seconds "${PROBE_SECONDS:-45}" || true
 say
 
 if [ "$MODE" = ask ]; then
-    read -r -p "Did the decoded values match the sensor's display? [y/N] " ans
+    read -r -p "Did the decoded values match the app's reading? [y/N] " ans
     case "$ans" in [yY]*) ;; *) say "[-] stopping. Send the hex above and the layout gets re-derived."; exit 0 ;; esac
 fi
 

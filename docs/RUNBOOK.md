@@ -463,11 +463,13 @@ TP351S is untested there. The probe prints, for each advertisement, the raw
 manufacturer payload, what `thermopro-ble` makes of it, and what the
 documented byte layout gives independently.
 
-**Compare both against the number on the sensor's own screen.** That display
-is the ground truth, not either decoder.
+**The sensor has no display.** The reference is the vendor phone app showing
+it: have the app open on the same reading while the probe runs. The app is the
+ground truth here, not either decoder. The probe never connects, so it cannot
+interfere with whatever the app is doing.
 
 - All three agree -> answer yes, it installs.
-- The two decoders agree with each other but not with the display -> the
+- The two decoders agree with each other but not with the app -> the
   offsets are wrong for this model; keep the hex and the layout gets
   re-derived.
 - The library fails and the manual decode works -> drop the dependency.
@@ -551,7 +553,7 @@ Do not reach for the Python inside LibreOffice, which is on this machine at
 If PowerShell objects to the UNC path, copy the two files somewhere local
 first; they have no other dependency on the repository.
 
-Compare what prints against the sensor's own screen. A match here means the
+Compare what prints against the vendor app's reading. A match here means the
 `--install` step on the node is a formality rather than a gamble, which is the
 whole point of doing it early. Note that Windows cannot scan in passive mode,
 so bleak will scan actively instead -- the sensor is unaffected, it broadcasts
