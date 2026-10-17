@@ -88,7 +88,15 @@ async def main():
             full = struct.pack("<H", cid) + payload
             print(f"    company 0x{cid:04x}  payload {payload.hex()}  "
                   f"({len(payload)} bytes)")
-            print(f"    manual  : {manual_decode(full)}")
+            if interesting:
+                print(f"    manual  : {manual_decode(full)}")
+            else:
+                # Under --all the decoder would happily turn an Apple beacon
+                # into "460.8 C", because the bytes are not ThermoPro's and
+                # nothing says so. Printing that invites someone to read it as
+                # a measurement.
+                print(f"    manual  : not a TP3x device; decode would be "
+                      f"meaningless")
         if adv.service_data:
             for uuid, payload in adv.service_data.items():
                 print(f"    service {uuid}: {payload.hex()}")
