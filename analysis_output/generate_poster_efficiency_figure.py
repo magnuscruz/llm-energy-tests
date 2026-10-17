@@ -74,7 +74,9 @@ TARGETS = [
         out=os.path.join(GIT, "paper1-iotj", "fig", "efficiency_vs_cap.pdf"),
         printed_mm=88.9, w=5.4, h=4.85, ncol=2,
         pt=dict(base=12, tick=13, axis=14, curve=14, legend=12),
-        adjust=dict(left=0.205, right=0.965, top=0.97, bottom=0.40),
+        # Same strip as the cap-adherence figure, so the two sit on facing
+        # columns with the legend at the same distance from the axis.
+        adjust=dict(left=0.205, right=0.965, top=0.97, bottom=0.32),
         lw=1.6, ms=6.2, star=200,
     ),
 ]

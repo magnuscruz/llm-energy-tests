@@ -50,7 +50,7 @@ TARGET = dict(
     out=os.path.join(GIT, "paper1-iotj", "fig", "ce_metric.pdf"),
     printed_mm=88.9, w=5.4, h=4.85,
     pt=dict(base=12, tick=13, axis=14, legend=11.5, note=11),
-    adjust=dict(left=0.215, right=0.895, top=0.97, bottom=0.345),
+    adjust=dict(left=0.215, right=0.895, top=0.97, bottom=0.325),
 )
 
 
