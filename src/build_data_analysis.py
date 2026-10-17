@@ -118,11 +118,24 @@ for model_name in model_names:
     # Fill the last row with the previous duration value
     merged_df['inference_duration_s'] = merged_df['inference_duration_s'].bfill()
 
-    # Estimate prefill_dur_s and decode_dur_s based on TPS ratio
-    # The inference_duration_s represents the total time, split proportionally between prefill and decode
-    total_tps = merged_df['prefill_tps'] + merged_df['decode_tps']
-    merged_df['prefill_dur_s'] = merged_df['inference_duration_s'] * (merged_df['prefill_tps'] / total_tps)
-    merged_df['decode_dur_s'] = merged_df['inference_duration_s'] * (merged_df['decode_tps'] / total_tps)
+    # prefill_dur_s and decode_dur_s arrive from the inference log as the
+    # engine's own prompt_eval_duration and eval_duration. They used to be
+    # OVERWRITTEN here by apportioning inference_duration_s in proportion to
+    # each phase's TPS, which was wrong twice: it replaced exact numbers with
+    # an estimate, and the estimate was inverted. Time per phase goes as
+    # tokens/TPS, so a phase with HIGHER throughput should receive LESS of the
+    # window, not more. On a typical Qwen2.5 row the engine reported prefill
+    # 0.0097 s and decode 2.87 s; the apportionment wrote 2.93 s and 0.07 s.
+    #
+    # Nothing reported in either manuscript used these columns -- tokens per
+    # joule is decode_tps/watts_mean, and response_time_s came out as the
+    # window itself, because the two shares summed to one. The merged files
+    # already released carry the wrong split; regenerating them is a separate
+    # decision, since it changes the archived artefact.
+    #
+    # Keeping the engine's own durations, response_time_s becomes the time the
+    # engine spent on the request rather than the spacing between requests,
+    # which is what the name claims.
 
     # 5. Compute the new metrics
     # Tokens-per-Joule
@@ -133,7 +146,9 @@ for model_name in model_names:
     CI_grid = 400 
     merged_df['eco_efficiency_ce'] = (merged_df['tokens_per_joule'] * 3.6e6) / CI_grid
 
-    # Response time (latency per token in seconds)
+    # End-to-end engine time for the request: prefill plus decode, as reported
+    # by the engine. inference_duration_s remains the wall-clock spacing
+    # between consecutive events, which is the longer quantity.
     merged_df['response_time_s'] = (merged_df['prefill_dur_s'] + merged_df['decode_dur_s'])
 
     # 6. Export the finalized dataset
