@@ -1,25 +1,36 @@
 {
 	"folders": [
 		{
+			"name": "llm-energy-tests",
 			"path": "."
 		},
 		{
+			"name": "paper1-iotj",
+			"path": "../paper1-iotj"
+		},
+		{
+			"name": "IEEETransactions",
 			"path": "../IEEETransactions"
 		},
 		{
-			"path": "../latex-thesis-template-cisuc-dei"
-		},
-		{
+			"name": "paper2-aging-position",
 			"path": "../paper2-aging-position"
 		},
 		{
+			"name": "paper3-mechanism",
 			"path": "../paper3-mechanism"
 		},
 		{
+			"name": "paper4-framework",
 			"path": "../paper4-framework"
 		},
 		{
+			"name": "phd-proposal",
 			"path": "../phd-proposal"
+		},
+		{
+			"name": "latex-thesis-template-cisuc-dei",
+			"path": "../latex-thesis-template-cisuc-dei"
 		}
 	],
 	"settings": {}

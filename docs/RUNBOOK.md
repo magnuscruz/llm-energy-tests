@@ -410,6 +410,40 @@ Bluetooth part sharing one radio front end, and the power meter is polled over
 the network every second. The node has `eno1` as well as `wlp0s20f3`; leaving
 the wired link as the default route keeps the two off each other.
 
+### State of the node, checked remotely on 2026-10-20
+
+Reached over Tailscale as `ubuntu@ubuntu-llm` (100.121.75.122). What is
+already done, and what is not:
+
+| | |
+|---|---|
+| kernel adapter `hci0` | present, driver loaded |
+| `bluez` package | **NOT INSTALLED** -- this is the only real gap |
+| `bluetooth.service` | inactive, because the package is absent |
+| `bleak`, `thermopro-ble` 1.1.4 | installed under `--user` |
+| the four scripts | deployed to `~/git/llm-energy-tests`, checksums match |
+| logger in simulation | runs, correct schema |
+| probe | fails with `org.bluez was not provided by any .service files`, which is the right error for a missing daemon |
+| default route | `eno1`, wired, as wanted -- `wlp0s20f3` is up as backup at metric 600 |
+| campaign running | none; load average 0.00, Ollama idle |
+
+Two commands need a password and so were left undone:
+
+```bash
+sudo apt install -y bluez          # 5.72-0ubuntu5.8, available
+sudo systemctl enable --now bluetooth
+```
+
+After those, `scripts/ble_probe_thermopro.py` should reach the adapter even
+with no sensor present -- it will simply find nothing. That alone is worth
+running, because it separates "the stack works" from "the sensor decodes".
+
+**The node's checkout is far behind.** Its HEAD is `d985e86`, from the Zenodo
+release work. The four BLE files were copied in directly rather than pulled,
+so as not to drag months of changes onto a machine mid-programme. Before the
+next campaign, that checkout wants updating deliberately -- the orchestration
+there predates the per-campaign version recording.
+
 ### One command, on the node, with the sensor beside it
 
 ```bash
