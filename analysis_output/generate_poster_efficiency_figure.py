@@ -35,11 +35,7 @@ from generate_efficiency_curve_figure import (
     SURFACE, INK_PRIMARY, INK_SECONDARY, INK_MUTED, BASELINE, CRITICAL_RED,
 )
 
-# The tikzposter draft is gone and the CISUC poster now keeps its own assets,
-# so the figure is written straight into them.
-POSTER_DIR = os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "..", "..", "IEEETransactions",
-    "poster-cisuc", "images"))
+GIT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # The poster's own palette, so the figure does not arrive from a different
 # document. ink/slate/accent are the three colours main.tex defines.
@@ -47,36 +43,61 @@ POSTER_INK = "#1B2A3A"
 POSTER_SLATE = "#41566B"
 POSTER_ACCENT = "#C2552E"
 
-# Sized for where it is printed, not for the screen. The poster gives it a
-# column of 116.8 mm (A2 text width 369.5 mm, three columns, 9.5 mm gutters),
-# which is 4.6 in, so a figure 5.4 in wide is scaled by 0.85 on the page and a
-# 17 pt label lands at about 14.5 pt. The body text around it is 21.5 pt. Making
-# the figure canvas smaller is what buys that: the same labels on a 9 in canvas
-# would print at 7.7 pt, which is the size they were before this was measured.
-FIG_W, FIG_H = 5.4, 4.85
-PT = dict(base=15, tick=16, axis=17, curve=17, legend=15)
+# ONE DESIGN, TWO SIZES. The same figure goes on an A2 poster column of
+# 116.8 mm and across the 181.9 mm text width of a two-column IEEE paper, and
+# the body text beside it is 21.5 pt in one place and 10 pt in the other. A
+# single file cannot serve both: a label is printed at
+#
+#     effective pt = in-figure pt x (printed width / canvas width)
+#
+# so the poster file, printed at 1.33x in the paper, puts a 17 pt label on the
+# page at 23 pt against 10 pt body text. Each target therefore gets its own
+# canvas and its own type sizes, chosen so the figure reads at roughly the size
+# of the text around it, and the aspect differs too: the paper wants a wide,
+# short figure spanning both columns, the poster a near-square one in a column.
+TARGETS = [
+    dict(
+        name="poster",
+        out=os.path.join(GIT, "IEEETransactions", "poster-cisuc", "images",
+                         "efficiency_vs_cap_poster.pdf"),
+        printed_mm=116.8, w=5.4, h=4.85, ncol=2,
+        pt=dict(base=15, tick=16, axis=17, curve=17, legend=15),
+        adjust=dict(left=0.215, right=0.965, top=0.97, bottom=0.435),
+        lw=2.6, ms=8, star=420,
+    ),
+    dict(
+        # One column of a two-column IEEE page, 252 pt = 88.9 mm, so the near
+        # square shape the poster uses fits without spanning the text width.
+        # Same canvas and aspect as the poster, smaller type: at a scale of
+        # 0.65 a 14 pt label prints at 9.1 pt, just under the 10 pt body.
+        name="paper",
+        out=os.path.join(GIT, "paper1-iotj", "fig", "efficiency_vs_cap.pdf"),
+        printed_mm=88.9, w=5.4, h=4.85, ncol=2,
+        pt=dict(base=12, tick=13, axis=14, curve=14, legend=12),
+        adjust=dict(left=0.205, right=0.965, top=0.97, bottom=0.40),
+        lw=1.6, ms=6.2, star=200,
+    ),
+]
 
-plt.rcParams.update({
+BASE_RC = {
     "figure.facecolor": "white", "axes.facecolor": "white",
     "axes.edgecolor": BASELINE, "axes.labelcolor": POSTER_INK,
     "text.color": POSTER_INK, "xtick.color": POSTER_SLATE,
     "ytick.color": POSTER_SLATE, "grid.color": "#e1e0d9",
-    "font.family": "serif", "font.size": PT["base"],
-})
+    "font.family": "serif",
+}
 
 
-def main():
-    df = pd.read_csv(COMBINED_CSV,
-                     usecols=["model_key", "condition", "tokens_per_joule"],
-                     low_memory=False)
-    tj = df.groupby(["model_key", "condition"])["tokens_per_joule"].mean()
-
-    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+def render(tj, t):
+    """Draw the figure once, for one target."""
+    PT = t["pt"]
+    plt.rcParams.update(dict(BASE_RC, **{"font.size": PT["base"]}))
+    fig, ax = plt.subplots(figsize=(t["w"], t["h"]))
 
     # The 62.5-75% band, shaded once behind everything.
     ax.axvspan(CONDITION_MHZ["75"], CONDITION_MHZ["62_5"],
                color=POSTER_SLATE, alpha=0.10, zorder=1)
-    ax.axhline(100, color=BASELINE, linewidth=1.2, linestyle=(0, (4, 3)), zorder=2)
+    ax.axhline(100, color=BASELINE, linewidth=1.0, linestyle=(0, (4, 3)), zorder=2)
 
     xs = [CONDITION_MHZ[c] for c in ORDER]
     handles, drawn = [], []
@@ -84,15 +105,13 @@ def main():
         base = tj[(model_key, "R1")]
         ys = [100.0 * tj[(model_key, c)] / base for c in ORDER]
         peak_i = ys.index(max(ys))
-        line, = ax.plot(xs, ys, color=style["color"], linewidth=2.6,
-                        marker="o", markersize=8, zorder=3,
+        line, = ax.plot(xs, ys, color=style["color"], linewidth=t["lw"],
+                        marker="o", markersize=t["ms"], zorder=3,
                         label=style["label"], solid_capstyle="round")
-        ax.scatter([xs[peak_i]], [ys[peak_i]], marker="*", s=420,
-                   color=CRITICAL_RED, edgecolor="white", linewidth=1.0, zorder=5)
+        ax.scatter([xs[peak_i]], [ys[peak_i]], marker="*", s=t["star"],
+                   color=CRITICAL_RED, edgecolor="white", linewidth=0.8, zorder=5)
         handles.append(line)
         drawn.append(ys)
-        print(f"  {style['label']:<18} peak {max(ys):6.1f}% at "
-              f"{CONDITION_LABEL[ORDER[peak_i]].replace(chr(10), ' ')}")
 
     ax.set_xticks(xs)
     ax.set_xticklabels([CONDITION_LABEL[c].replace("\n", " ")
@@ -101,10 +120,10 @@ def main():
                         for c in ORDER], fontsize=PT["tick"])
     ax.tick_params(axis="y", labelsize=PT["tick"])
     ax.set_xlabel("Sustained clock, % of rated speed", fontsize=PT["axis"],
-                  labelpad=8)
-    ax.set_ylabel("Tokens per joule\n(uncapped $=100$)", fontsize=PT["axis"],
                   labelpad=6)
-    ax.grid(True, axis="y", linewidth=0.8, alpha=0.7)
+    ax.set_ylabel("Tokens per joule\n(uncapped $=100$)", fontsize=PT["axis"],
+                  labelpad=5)
+    ax.grid(True, axis="y", linewidth=0.6, alpha=0.7)
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
 
@@ -116,53 +135,67 @@ def main():
     # tenth of the height on nothing and pressed the four curves together; with
     # the legend out of the plot there is no reason to keep that room, so the
     # axis is cut to the data and the same curves are drawn further apart.
-    lo = min(min(v) for v in drawn) - 3
-    hi = max(max(v) for v in drawn) + 4
-    ax.set_ylim(lo, hi)
+    ax.set_ylim(min(min(v) for v in drawn) - 3, max(max(v) for v in drawn) + 4)
 
     # The legend was in the lower-left corner of the plot, which cost the curves
     # the room they needed to separate. Below the axis it costs only canvas,
-    # which is cheaper.
+    # which is cheaper. It goes on the FIGURE, not the axes: hung off the axes
+    # it was wider than they were, and bbox_inches="tight" then grew the canvas
+    # sideways, which silently shrinks everything once the result is scaled to
+    # a fixed width.
     handles += [
-        plt.Line2D([0], [0], color="none", marker="*", markersize=17,
-                   markerfacecolor=CRITICAL_RED, markeredgecolor="white",
-                   label="best efficiency"),
+        plt.Line2D([0], [0], color="none", marker="*",
+                   markersize=PT["legend"] + 2, markerfacecolor=CRITICAL_RED,
+                   markeredgecolor="white", label="best efficiency"),
         plt.Rectangle((0, 0), 1, 1, color=POSTER_SLATE, alpha=0.18,
                       label="62.5\u201375\u2009% band"),
     ]
-    # On the FIGURE, not on the axes, and the strip for it is reserved with
-    # subplots_adjust. Hung off the axes instead, it was wider than they were,
-    # and bbox_inches="tight" then grew the canvas sideways -- which silently
-    # shrinks everything once the result is scaled to a fixed column width.
-    # Two columns, not three: three made the legend wider than the canvas and
-    # it was clipped at both ends. The left margin holds a two-line y label at
-    # 17 pt, which 0.165 did not.
-    fig.subplots_adjust(left=0.215, right=0.965, top=0.97, bottom=0.435)
-    leg = fig.legend(handles=handles, loc="lower center", frameon=False, ncol=2,
-                     fontsize=PT["legend"], handletextpad=0.5,
-                     columnspacing=1.6, labelspacing=0.4, borderaxespad=0.5)
+    fig.subplots_adjust(**t["adjust"])
+    leg = fig.legend(handles=handles, loc="lower center", frameon=False,
+                     ncol=t["ncol"], fontsize=PT["legend"], handletextpad=0.5,
+                     columnspacing=1.6, labelspacing=0.4, borderaxespad=0.4)
 
-    # No tight_layout and no bbox_inches: the canvas must stay exactly
-    # FIG_W x FIG_H, because every type size here was chosen against the
-    # 116.8 mm column it is printed in.
-    # The axis label and the legend are placed by different mechanisms -- one
-    # hangs off the axes, the other off the figure -- so nothing stops them
-    # colliding, and the first attempt did. Measure the gap rather than trust
-    # the arithmetic: a negative one means they overlap.
+    # The axis label and the legend are placed by different mechanisms, so
+    # nothing stops them colliding and the first attempt did. Measure the gap
+    # rather than trust the arithmetic.
     fig.canvas.draw()
     r = fig.canvas.get_renderer()
-    xl = ax.xaxis.label.get_window_extent(renderer=r)
-    lg = leg.get_window_extent(renderer=r)
-    gap_in = (xl.y0 - lg.y1) / fig.dpi
-    print(f"  folga entre o rotulo do eixo x e a legenda: {gap_in*25.4:.1f} mm "
-          f"na tela, {gap_in*25.4*(116.8/(FIG_W*25.4)):.1f} mm impressos")
+    gap_in = (ax.xaxis.label.get_window_extent(renderer=r).y0
+              - leg.get_window_extent(renderer=r).y1) / fig.dpi
+    scale = (t["printed_mm"] / 25.4) / t["w"]
     if gap_in <= 0:
-        raise RuntimeError("o rotulo do eixo x e a legenda sobrepoem-se")
+        raise RuntimeError(f"{t['name']}: x label and legend overlap")
 
-    out = os.path.join(POSTER_DIR, "efficiency_vs_cap_poster.pdf")
-    fig.savefig(out, facecolor="white")
+    # No tight_layout and no bbox_inches: the canvas must stay exactly w x h,
+    # because the type sizes were chosen against the width it is printed at.
+    os.makedirs(os.path.dirname(t["out"]), exist_ok=True)
+    fig.savefig(t["out"], facecolor="white")
     plt.close(fig)
-    print(f"\nwrote {out}")
+    print(f"  {t['name']:<7} {t['printed_mm']:.1f} mm wide, canvas {t['w']}x{t['h']} in "
+          f"-> scale {scale:.2f}, {PT['axis']} pt label prints at "
+          f"{PT['axis']*scale:.1f} pt, label/legend gap {gap_in*25.4*scale:.1f} mm")
+    print(f"          {t['out']}")
+
+
+def main():
+    df = pd.read_csv(COMBINED_CSV,
+                     usecols=["model_key", "condition", "tokens_per_joule"],
+                     low_memory=False)
+    tj = df.groupby(["model_key", "condition"])["tokens_per_joule"].mean()
+
+    for model_key, style in MODEL_STYLE.items():
+        base = tj[(model_key, "R1")]
+        ys = [100.0 * tj[(model_key, c)] / base for c in ORDER]
+        i = ys.index(max(ys))
+        print(f"  {style['label']:<18} peak {max(ys):6.1f}% at "
+              f"{CONDITION_LABEL[ORDER[i]].replace(chr(10), ' ')}")
+    print()
+
+    for t in TARGETS:
+        if not os.path.isdir(os.path.dirname(os.path.dirname(t["out"]))):
+            print(f"  {t['name']:<7} skipped: no such repository")
+            continue
+        render(tj, t)
 
 
 if __name__ == "__main__":
