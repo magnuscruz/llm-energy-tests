@@ -45,7 +45,7 @@ import struct
 import sys
 import time
 
-MAX_AGE_S = 45.0          # a reading older than this is stale, not a reading
+MAX_AGE_S = 90.0          # a reading older than this is stale, not a reading
 NAME_PREFIXES = ("TP35", "TP39")
 
 
@@ -122,12 +122,23 @@ def _last_timestamp(path):
     return None
 
 
-async def run(out_path, interval, listener, scanner):
+async def run(out_path, interval, listener, scanner, scan_window=None):
+    """Append one row per interval.
+
+    If scan_window is shorter than interval, the radio is only on for that
+    window each cycle and idle for the rest. That matters when the logger runs
+    on the node under test: the AX211 is a combined Wi-Fi and Bluetooth part
+    sharing one front end, and the node also polls the power meter over the
+    network every second. A continuous scan contends with that for no benefit,
+    because the sensor broadcasts every few seconds and one row a minute is
+    ample for a room.
+    """
     header_needed = not os.path.exists(out_path) or os.path.getsize(out_path) == 0
     with open(out_path, "a", buffering=1) as fh:
         if header_needed:
             fh.write("timestamp,ambient_c,humidity_pct\n")
-        if scanner is not None:
+        duty = scanner is not None and scan_window and scan_window < interval
+        if scanner is not None and not duty:
             await scanner.start()
         next_at = time.monotonic()
         written = skipped = nonmono = 0
@@ -135,8 +146,17 @@ async def run(out_path, interval, listener, scanner):
         try:
             while True:
                 next_at += interval
-                # Absolute schedule, so a slow write never accumulates drift.
-                await asyncio.sleep(max(0.0, next_at - time.monotonic()))
+                if duty:
+                    # Listen at the END of the cycle, so the row carries a
+                    # reading taken moments before it, not one a minute stale.
+                    await asyncio.sleep(max(0.0, next_at - scan_window
+                                            - time.monotonic()))
+                    await scanner.start()
+                    await asyncio.sleep(max(0.0, next_at - time.monotonic()))
+                    await scanner.stop()
+                else:
+                    # Absolute schedule, so a slow write never accumulates drift.
+                    await asyncio.sleep(max(0.0, next_at - time.monotonic()))
                 got = listener.latest()
                 if got is None or (time.monotonic() - got[2]) > MAX_AGE_S:
                     skipped += 1
@@ -168,7 +188,10 @@ async def run(out_path, interval, listener, scanner):
                 written += 1
         finally:
             if scanner is not None:
-                await scanner.stop()
+                try:
+                    await scanner.stop()
+                except Exception:
+                    pass
             print(f"[info] stopped after {written} rows, {skipped} intervals "
               f"without a fresh reading, {nonmono} dropped for a stalled or "
               f"backward clock", file=sys.stderr)
@@ -178,8 +201,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("output", help="CSV path to append to")
-    ap.add_argument("--interval", type=float, default=1.0,
-                    help="seconds between rows (default 1, as the I2C logger)")
+    ap.add_argument("--interval", type=float, default=60.0,
+                    help="seconds between rows (default 60; a room does not "
+                         "move faster than that, and merge_asof carries the "
+                         "last reading forward to every inference)")
+    ap.add_argument("--scan-window", type=float, default=8.0,
+                    help="seconds of radio time per interval (default 8). Set "
+                         "it >= --interval to scan continuously.")
     ap.add_argument("--address", default=None,
                     help="bind to one sensor's MAC, rather than any TP3x in range")
     ap.add_argument("--simulate", action="store_true",
@@ -187,7 +215,7 @@ def main():
     a = ap.parse_args()
 
     if a.simulate:
-        asyncio.run(run(a.output, a.interval, Simulated(), None))
+        asyncio.run(run(a.output, a.interval, Simulated(), None, a.scan_window))
         return
     try:
         from bleak import BleakScanner
@@ -195,7 +223,7 @@ def main():
         sys.exit("bleak not installed: pip install bleak")
     listener = Listener(a.address)
     scanner = BleakScanner(detection_callback=listener.on_adv)
-    asyncio.run(run(a.output, a.interval, listener, scanner))
+    asyncio.run(run(a.output, a.interval, listener, scanner, a.scan_window))
 
 
 if __name__ == "__main__":

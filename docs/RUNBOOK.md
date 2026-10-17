@@ -390,66 +390,93 @@ telemetry under that name. Check spans, never the filename.
 
 ## Ambient logging over Bluetooth (ThermoPro TP351S)
 
-The SHT31-D over I²C has been the weak link in the ambient record: a loose
+The SHT31-D over I2C has been the weak link in the ambient record: a loose
 VDD/GND contact once produced 30,449 consecutive failed reads and left
 coverage at 73.5 %. The BLE sensor replaces the wire, and with it the whole
 class of failure, because nothing is opened: the sensor broadcasts and the
 logger listens. No pairing, no GATT connection, no session to lose.
 
-**It runs on the Pi, not on the node.** The node has Bluetooth and using it
-would be simpler, but ambient measurement exists to characterise the room from
-outside the machine being measured, and a collector on the node sits inside
-the envelope. That mistake is already in the paper once, for the power meter.
+**It runs on the node.** That is a decision with a cost and it is worth being
+clear about it. Ambient measurement belongs outside the machine under test,
+and the Pi was that outside; running it on the node puts a second collector
+inside the measured envelope, beside the 1 Hz power poll already there. Two
+things keep that small and, more importantly, **constant across scenarios so
+that it cancels in every comparison**: the scan is passive, and the radio is
+on for eight seconds a minute rather than continuously. Constant is what
+matters. Zero stopped being available the moment the collector moved in.
 
-### One open question, and the single command that answers it
+**Put the node's IP traffic on Ethernet.** The AX211 is a combined Wi-Fi and
+Bluetooth part sharing one radio front end, and the power meter is polled over
+the network every second. The node has `eno1` as well as `wlp0s20f3`; leaving
+the wired link as the default route keeps the two off each other.
 
-`thermopro-ble` gates on `name.startswith(("TP35", "TP39", "TP96", "TP97"))`,
-so **TP351S passes** and falls into the generic TP3 branch — which that
-library's own comments say was written for the TP357S, TP397 and TP393. The
-TP351S is untested there. Before deploying anything, with the sensor on the
-desk beside the Pi:
+### One command, on the node, with the sensor beside it
 
 ```bash
-pip install bleak thermopro-ble          # once
+./scripts/setup_ambient_node.sh --check   # look only: adapter, service, deps
+./scripts/setup_ambient_node.sh           # probe, ask, then install
+```
+
+It resolves the user, the paths and the interpreter itself, so there is
+nothing to edit first. Step 4 is the one that matters.
+
+### The question step 4 answers
+
+`thermopro-ble` gates on `name.startswith(("TP35", "TP39", "TP96", "TP97"))`,
+so **TP351S passes** and falls into the generic TP3 branch -- which that
+library's own comments say was written for the TP357S, TP397 and TP393. The
+TP351S is untested there. The probe prints, for each advertisement, the raw
+manufacturer payload, what `thermopro-ble` makes of it, and what the
+documented byte layout gives independently.
+
+**Compare both against the number on the sensor's own screen.** That display
+is the ground truth, not either decoder.
+
+- All three agree -> answer yes, it installs.
+- The two decoders agree with each other but not with the display -> the
+  offsets are wrong for this model; keep the hex and the layout gets
+  re-derived.
+- The library fails and the manual decode works -> drop the dependency.
+
+To run the probe alone, without any of the rest:
+
+```bash
 python3 scripts/ble_probe_thermopro.py --seconds 90
 ```
 
-It prints, for each advertisement: the raw manufacturer payload, what
-`thermopro-ble` makes of it, and what the documented byte layout gives
-independently. **Compare both against the number on the sensor's own screen.**
-That display is the ground truth, not either decoder.
-
-- All three agree → deploy as is.
-- The two decoders agree with each other but not with the display → the offsets
-  are wrong for this model; capture the hex and we re-derive them.
-- The library fails and the manual decode works → drop the dependency.
-
-### Deploying
-
-```bash
-./scripts/deploy_pi.sh --check          # what has drifted
-./scripts/deploy_pi.sh                  # push and restart
-```
-
-The BLE logger is a **separate unit writing a separate file**
-(`~/ambient_ble.csv` against `~/ambient.csv`), so both sensors run side by side.
-That is deliberate: the first weeks exist to see whether the new sensor agrees
-with the wired one before the wired one is retired. Two instruments
-disagreeing is information; one instrument is a hope. Both files match
-`*ambient*.csv`, which `build_data_analysis.py` globs — so pick which one the
-fusion sees by which one you collect into the campaign directory, and do not
-put both there.
-
 ### What the logger guarantees
 
-Same schema as the I²C logger, `timestamp,ambient_c,humidity_pct`, appended
-and never rewritten. Two properties worth knowing:
+Same schema as the I2C logger, `timestamp,ambient_c,humidity_pct`, appended
+and never rewritten. Three properties worth knowing:
 
+- **One row a minute, radio on for eight seconds of it**, listening at the end
+  of each cycle so the row carries a reading taken moments before it. A room
+  does not move faster, and `merge_asof` carries the last reading forward to
+  every inference regardless of how sparse it is.
 - **An interval with no fresh advertisement writes nothing** rather than
   repeating a stale value. Gaps are honest; imputed rows are not. A reading
-  older than 45 s is treated as absent.
+  older than 90 s counts as absent.
 - **The timestamp sequence is strictly increasing**, across restarts too. This
   matters more than it looks: `build_data_analysis.py` *sorts* the ambient log
   before merging rather than rejecting it, so a row written out of order after
-  a clock step is not an error there — it is silently reattributed to the wrong
-  moment. The logger drops such rows and says so in the journal.
+  a clock step is not an error there -- it is silently reattributed to the
+  wrong moment. The logger drops such rows and says so in the journal. The
+  I2C logger has the same exposure and has not been changed.
+
+### Collecting it
+
+The log is local now, so there is nothing to fetch over SSH. Copy it into the
+campaign directory when the campaign ends:
+
+```bash
+cp ~/ambient_ble.csv logs/<campaign>/deep_aging/ambient_$(date +%Y%m%d).csv
+```
+
+**One `*ambient*.csv` per campaign directory.** The fusion globs for that
+pattern and takes the most recent; two files there is a silent coin toss.
+
+### The Pi
+
+`scripts/deploy_pi.sh` and `scripts/collect_ambient.sh` still work and are
+left in place. They are the path for the I2C sensor if it is ever wanted back,
+or for running a second sensor off the node as a cross-check.
