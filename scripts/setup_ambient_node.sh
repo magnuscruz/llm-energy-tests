@@ -46,6 +46,12 @@ else
 fi
 INTERVAL=${AMBIENT_INTERVAL:-60}
 WINDOW=${AMBIENT_SCAN_WINDOW:-8}
+# Bind to one sensor by a substring of its advertised name, e.g. C505 for
+# "TP351S (C505)". Left empty, the logger takes any TP35/TP39 device in range,
+# which is right until a second one is ever within a few metres.
+NAME=${AMBIENT_NAME:-}
+NAME_ARG=""
+[ -n "$NAME" ] && NAME_ARG=" --name $NAME"
 
 say() { printf '%s\n' "$*"; }
 ok()  { printf '  [ok]   %s\n' "$*"; }
@@ -54,6 +60,12 @@ bad() { printf '  [!]    %s\n' "$*"; }
 say "[1/5] the machine"
 say "      repo=$REPO  user=$USER_NAME  python=$PY"
 say "      log=$LOG  interval=${INTERVAL}s  radio on ${WINDOW}s per interval"
+if [ -n "$NAME" ]; then
+    say "      bound to the sensor whose name contains '$NAME'"
+else
+    say "      not bound to a sensor: any TP35/TP39 in range will be logged."
+    say "      Set AMBIENT_NAME=C505 (or similar) to pin it to one."
+fi
 
 say "[2/5] bluetooth"
 fail=0
@@ -105,7 +117,7 @@ say "[5/5] installing the service"
 tmp=$(mktemp)
 sed -e "s|^User=.*|User=$USER_NAME|" \
     -e "s|^WorkingDirectory=.*|WorkingDirectory=$REPO|" \
-    -e "s|^ExecStart=.*|ExecStart=$PY src/ambient_logger_ble.py $LOG --interval $INTERVAL --scan-window $WINDOW|" \
+    -e "s|^ExecStart=.*|ExecStart=$PY src/ambient_logger_ble.py $LOG --interval $INTERVAL --scan-window $WINDOW$NAME_ARG|" \
     "$REPO/scripts/ambient-logger-ble.service" > "$tmp"
 sudo install -m 0644 "$tmp" "$UNIT" && rm -f "$tmp"
 sudo systemctl daemon-reload

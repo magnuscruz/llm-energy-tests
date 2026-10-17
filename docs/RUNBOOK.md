@@ -447,9 +447,17 @@ there predates the per-campaign version recording.
 ### One command, on the node, with the sensor beside it
 
 ```bash
-./scripts/setup_ambient_node.sh --check   # look only: adapter, service, deps
-./scripts/setup_ambient_node.sh           # probe, ask, then install
+./scripts/setup_ambient_node.sh --check            # look only
+AMBIENT_NAME=C505 ./scripts/setup_ambient_node.sh  # probe, ask, then install
 ```
+
+`AMBIENT_NAME` binds the service to one sensor by a substring of its
+advertised name -- `C505` for `TP351S (C505)`. Without it the logger takes
+any TP35 or TP39 device in range, which is right until a second one is ever
+within a few metres of the node, and wrong silently when it is. The script
+prints which of the two it is about to do. The other knobs are
+`AMBIENT_INTERVAL` (60 s), `AMBIENT_SCAN_WINDOW` (8 s), `AMBIENT_LOG` and
+`AMBIENT_PYTHON`.
 
 It resolves the user, the paths and the interpreter itself, so there is
 nothing to edit first. Step 4 is the one that matters.

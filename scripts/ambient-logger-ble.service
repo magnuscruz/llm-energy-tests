@@ -12,6 +12,10 @@
 #   sudo systemctl enable --now ambient-logger-ble
 #   journalctl -u ambient-logger-ble -f
 #
+# ExecStart below is a template: scripts/setup_ambient_node.sh rewrites the
+# user, the working directory and the whole command line, including --name if
+# AMBIENT_NAME is set. Edit it there rather than here.
+#
 # Needs: sudo apt install -y python3-bleak   (or pip install bleak)
 # The user must be able to scan: on Raspberry Pi OS, membership of the
 # bluetooth group is enough; no root and no pairing are required, because the
