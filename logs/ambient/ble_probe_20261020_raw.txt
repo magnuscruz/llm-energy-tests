@@ -1,0 +1,34 @@
+﻿scanning passively for 90 s -- compare what prints against the vendor app's reading
+
+[FF:FF:81:1A:C5:05] name='TP351S (C505)' rssi=-38
+    company 0x0fc2  payload 0137223301  (5 bytes)
+    manual  : 27.1 C, 55% RH, battery 100%
+    library : {'battery': 100, 'temperature': 27.1, 'humidity': 55, 'signal_strength': -38}
+
+[FF:FF:81:1A:C5:05] name='TP351S (C505)' rssi=-38
+    company 0x0fc2  payload 0137223301  (5 bytes)
+    manual  : 27.1 C, 55% RH, battery 100%
+    library : {'battery': 100, 'temperature': 27.1, 'humidity': 55, 'signal_strength': -38}
+
+[FF:FF:81:1A:C5:05] name='TP351S (C505)' rssi=-39
+    company 0x0fc2  payload 0137223301  (5 bytes)
+    manual  : 27.1 C, 55% RH, battery 100%
+    library : {'battery': 100, 'temperature': 27.1, 'humidity': 55, 'signal_strength': -39}
+
+[FF:FF:81:1A:C5:05] name='TP351S (C505)' rssi=-39
+    company 0x0fc2  payload 0137223301  (5 bytes)
+    manual  : 27.1 C, 55% RH, battery 100%
+    library : {'battery': 100, 'temperature': 27.1, 'humidity': 55, 'signal_strength': -39}
+
+[FF:FF:81:1A:C5:05] name='TP351S (C505)' rssi=-38
+    company 0x0fc2  payload 0137223301  (5 bytes)
+    manual  : 27.1 C, 55% RH, battery 100%
+    library : {'battery': 100, 'temperature': 27.1, 'humidity': 55, 'signal_strength': -38}
+
+[FF:FF:81:1A:C5:05] name='TP351S (C505)' rssi=-38
+    company 0x0fc2  payload 0137223301  (5 bytes)
+    manual  : 27.1 C, 55% RH, battery 100%
+    library : {'battery': 100, 'temperature': 27.1, 'humidity': 55, 'signal_strength': -38}
+
+advertisements per device:
+  TP351S (C505)            14
