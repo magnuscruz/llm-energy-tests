@@ -496,6 +496,31 @@ reassembled frame `c20b0136223301` rather than taken from either of them:
 **So the TP357S layout does hold for the TP351S**, and the open question in
 this runbook is closed.
 
+**Confirmed differentially, which is stronger than any app.** The sensor was
+held under a leg and probed again. Exactly two bytes changed, and they are the
+two the layout claims are variable:
+
+```
+antes:  c2 0b 01 36 22 33 01   ->  26.7 C, 54 %
+depois: c2 21 01 3b 22 33 01   ->  28.9 C, 59 %
+         ^^       ^^
+         temp     humidity
+```
+
+`data[0]`, `data[2]`, and `data[4..6]` held still. Temperature rose 2.2 C and
+humidity 5 points, which is what body contact does. The scale factor is
+settled by the magnitude alone: at /1 the change would read +22 C, at /100
++0.02 C, and neither is what a leg does to a thermometer. Only /10 gives a
+plausible answer.
+
+A second thing falls out of it. The *company id* changed, `0x0bc2` to
+`0x21c2`, which a real assigned manufacturer identifier cannot do. That is
+direct confirmation of why `decode()` indexes across it: these sensors
+broadcast a flat frame and the host stack carves a company id out of its first
+two bytes because the manufacturer-data field has nowhere else to put them.
+The byte that moved, `0x0b` to `0x21`, is the temperature's low byte sitting
+in what Windows and BlueZ both call the company id.
+
 **Bind by name, not by address.** `FF:FF:81:1A:C5:05` has the top bits of a
 static random address: it may survive a battery change, it may not, and
 nothing promises either way. The advertised name carries its own suffix, so
