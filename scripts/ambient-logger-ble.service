@@ -1,0 +1,43 @@
+# Ambient logger (BLE) as a service.
+#
+# A sibling of ambient-logger.service, which reads the SHT31-D over I2C. The
+# two are deliberately separate units writing to separate files, so they can
+# run side by side: the point of the first weeks is to see whether the BLE
+# sensor agrees with the wired one before the wired one is retired. Two
+# instruments disagreeing is information; one instrument is a hope.
+#
+# Install on the Raspberry Pi:
+#   sudo cp ambient-logger-ble.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now ambient-logger-ble
+#   journalctl -u ambient-logger-ble -f
+#
+# Needs: sudo apt install -y python3-bleak   (or pip install bleak)
+# The user must be able to scan: on Raspberry Pi OS, membership of the
+# bluetooth group is enough; no root and no pairing are required, because the
+# logger only listens to advertisements.
+
+[Unit]
+Description=Out-of-band ambient temperature and humidity logger (ThermoPro BLE)
+# The log is timestamped in UNIX epoch and fused by that. The logger refuses to
+# write a timestamp that does not advance, so a wrong clock costs samples
+# rather than corrupting the record -- but waiting for NTP avoids the loss.
+After=network-online.target time-sync.target bluetooth.target
+Wants=network-online.target time-sync.target
+Requires=bluetooth.target
+
+[Service]
+Type=simple
+User=magnuspi
+WorkingDirectory=/home/magnuspi/ambient
+ExecStart=/usr/bin/python3 src/ambient_logger_ble.py /home/magnuspi/ambient_ble.csv --interval 1
+Restart=always
+RestartSec=10
+# The logger appends, reads back the last timestamp on start, and never writes
+# one that does not advance, so a restart costs at most the samples taken while
+# it was down. Those show up as a gap, which is honest.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

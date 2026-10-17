@@ -42,11 +42,15 @@ done
 
 REMOTE_DIR=/home/magnuspi/ambient
 UNIT=/etc/systemd/system/ambient-logger.service
+UNIT_BLE=/etc/systemd/system/ambient-logger-ble.service
 
 # local path                        remote path
 FILES=(
-  "src/ambient_logger.py            $REMOTE_DIR/src/ambient_logger.py"
-  "scripts/ambient-logger.service   $UNIT"
+  "src/ambient_logger.py              $REMOTE_DIR/src/ambient_logger.py"
+  "scripts/ambient-logger.service     $UNIT"
+  "src/ambient_logger_ble.py          $REMOTE_DIR/src/ambient_logger_ble.py"
+  "scripts/ambient-logger-ble.service $UNIT_BLE"
+  "scripts/ble_probe_thermopro.py     $REMOTE_DIR/scripts/ble_probe_thermopro.py"
 )
 
 drift=0
@@ -72,17 +76,21 @@ for pair in "${FILES[@]}"; do
 
     [ "$CHECK_ONLY" = 1 ] && continue
 
-    if [ "$remote_f" = "$UNIT" ]; then
-        scp -q -o BatchMode=yes "$local_f" "$PI:/tmp/ambient-logger.service" \
-          && ssh -o BatchMode=yes "$PI" "sudo install -m 0644 /tmp/ambient-logger.service '$UNIT' && rm -f /tmp/ambient-logger.service" \
-          || { echo "[!] could not install the unit (needs sudo on the Pi)" >&2; exit 1; }
+    case "$remote_f" in
+      /etc/systemd/system/*)
+        unit_name=$(basename "$remote_f")
+        scp -q -o BatchMode=yes "$local_f" "$PI:/tmp/$unit_name" \
+          && ssh -o BatchMode=yes "$PI" "sudo install -m 0644 /tmp/$unit_name '$remote_f' && rm -f /tmp/$unit_name" \
+          || { echo "[!] could not install $unit_name (needs sudo on the Pi)" >&2; exit 1; }
         restart_unit=1
-    else
+        ;;
+      *)
         ssh -o BatchMode=yes "$PI" "mkdir -p '$(dirname "$remote_f")'"
         scp -q -o BatchMode=yes "$local_f" "$PI:$remote_f" \
           || { echo "[!] copy failed: $local_f" >&2; exit 1; }
         restart_logger=1
-    fi
+        ;;
+    esac
     echo "    pushed        $remote_f"
 done
 
@@ -95,22 +103,35 @@ if [ "$restart_unit" = 1 ]; then
     ssh -o BatchMode=yes "$PI" "sudo systemctl daemon-reload"
 fi
 if [ "$restart_logger" = 1 ] || [ "$restart_unit" = 1 ]; then
-    echo "[+] restarting the logger"
-    ssh -o BatchMode=yes "$PI" "sudo systemctl restart ambient-logger"
+    # Restart only the units that exist. The BLE logger is a separate unit so
+    # the two sensors can run side by side while the new one earns trust; a Pi
+    # that has only ever had the I2C one must not fail here.
+    echo "[+] restarting the loggers that are installed"
+    ssh -o BatchMode=yes "$PI" '
+      for u in ambient-logger ambient-logger-ble; do
+        if systemctl list-unit-files "$u.service" >/dev/null 2>&1 \
+           && [ -f "/etc/systemd/system/$u.service" ]; then
+          sudo systemctl restart "$u" && echo "    restarted $u"
+        fi
+      done'
     sleep 4
 fi
 
 echo "[+] verifying"
 ssh -o BatchMode=yes "$PI" 'bash -s' <<'REMOTE'
-printf "    service: %s / %s\n" "$(systemctl is-active ambient-logger)" "$(systemctl is-enabled ambient-logger)"
-f=/home/magnuspi/ambient.csv
-if [ -f "$f" ]; then
-    before=$(wc -l < "$f"); sleep 5; after=$(wc -l < "$f")
-    printf "    log:     %s lines, +%s in 5 s\n" "$after" "$((after-before))"
-    [ "$after" -gt "$before" ] || echo "    [!] the log is not growing"
-else
-    echo "    [!] $f does not exist"
-fi
+for pair in "ambient-logger /home/magnuspi/ambient.csv" \
+            "ambient-logger-ble /home/magnuspi/ambient_ble.csv"; do
+    set -- $pair; u=$1; f=$2
+    [ -f "/etc/systemd/system/$u.service" ] || continue
+    printf "    %-20s %s / %s\n" "$u" "$(systemctl is-active $u)" "$(systemctl is-enabled $u)"
+    if [ -f "$f" ]; then
+        before=$(wc -l < "$f"); sleep 5; after=$(wc -l < "$f")
+        printf "      log: %s lines, +%s in 5 s\n" "$after" "$((after-before))"
+        [ "$after" -gt "$before" ] || echo "      [!] not growing -- check journalctl -u $u"
+    else
+        echo "      [!] $f does not exist yet"
+    fi
+done
 REMOTE
 
 echo "[+] done. Collect the data with ./scripts/collect_ambient.sh <campaign-dir>"

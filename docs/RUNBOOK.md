@@ -387,3 +387,69 @@ ssh <pi> 'sudo systemctl stop ambient-logger && : > ~/ambient.csv && sudo system
 **Filenames say nothing about what completed.** Every file is named
 `*_48.00h_*` whatever happened. One existing run holds 40.1 h of power
 telemetry under that name. Check spans, never the filename.
+
+## Ambient logging over Bluetooth (ThermoPro TP351S)
+
+The SHT31-D over I²C has been the weak link in the ambient record: a loose
+VDD/GND contact once produced 30,449 consecutive failed reads and left
+coverage at 73.5 %. The BLE sensor replaces the wire, and with it the whole
+class of failure, because nothing is opened: the sensor broadcasts and the
+logger listens. No pairing, no GATT connection, no session to lose.
+
+**It runs on the Pi, not on the node.** The node has Bluetooth and using it
+would be simpler, but ambient measurement exists to characterise the room from
+outside the machine being measured, and a collector on the node sits inside
+the envelope. That mistake is already in the paper once, for the power meter.
+
+### One open question, and the single command that answers it
+
+`thermopro-ble` gates on `name.startswith(("TP35", "TP39", "TP96", "TP97"))`,
+so **TP351S passes** and falls into the generic TP3 branch — which that
+library's own comments say was written for the TP357S, TP397 and TP393. The
+TP351S is untested there. Before deploying anything, with the sensor on the
+desk beside the Pi:
+
+```bash
+pip install bleak thermopro-ble          # once
+python3 scripts/ble_probe_thermopro.py --seconds 90
+```
+
+It prints, for each advertisement: the raw manufacturer payload, what
+`thermopro-ble` makes of it, and what the documented byte layout gives
+independently. **Compare both against the number on the sensor's own screen.**
+That display is the ground truth, not either decoder.
+
+- All three agree → deploy as is.
+- The two decoders agree with each other but not with the display → the offsets
+  are wrong for this model; capture the hex and we re-derive them.
+- The library fails and the manual decode works → drop the dependency.
+
+### Deploying
+
+```bash
+./scripts/deploy_pi.sh --check          # what has drifted
+./scripts/deploy_pi.sh                  # push and restart
+```
+
+The BLE logger is a **separate unit writing a separate file**
+(`~/ambient_ble.csv` against `~/ambient.csv`), so both sensors run side by side.
+That is deliberate: the first weeks exist to see whether the new sensor agrees
+with the wired one before the wired one is retired. Two instruments
+disagreeing is information; one instrument is a hope. Both files match
+`*ambient*.csv`, which `build_data_analysis.py` globs — so pick which one the
+fusion sees by which one you collect into the campaign directory, and do not
+put both there.
+
+### What the logger guarantees
+
+Same schema as the I²C logger, `timestamp,ambient_c,humidity_pct`, appended
+and never rewritten. Two properties worth knowing:
+
+- **An interval with no fresh advertisement writes nothing** rather than
+  repeating a stale value. Gaps are honest; imputed rows are not. A reading
+  older than 45 s is treated as absent.
+- **The timestamp sequence is strictly increasing**, across restarts too. This
+  matters more than it looks: `build_data_analysis.py` *sorts* the ambient log
+  before merging rather than rejecting it, so a row written out of order after
+  a clock step is not an error there — it is silently reattributed to the wrong
+  moment. The logger drops such rows and says so in the journal.
