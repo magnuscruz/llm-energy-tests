@@ -96,13 +96,23 @@ class Simulated:
 class Listener:
     """Holds the most recent advertisement, with the time it arrived."""
 
-    def __init__(self, address=None):
+    def __init__(self, address=None, name_filter=None):
         self.address = address.lower() if address else None
+        self.name_filter = name_filter
         self._value = None
 
     def on_adv(self, device, adv):
         name = adv.local_name or device.name or ""
-        if self.address:
+        # Prefer the name. The observed unit advertises from FF:FF:81:1A:C5:05,
+        # whose top bits mark it a static random address: it may survive a
+        # battery change or it may not, and nothing promises either way. The
+        # advertised name carries its own suffix -- "TP351S (C505)" -- so
+        # binding to that identifies one sensor among several without
+        # depending on an address that is not ours to rely on.
+        if self.name_filter:
+            if self.name_filter not in name:
+                return
+        elif self.address:
             if device.address.lower() != self.address:
                 return
         elif not name.startswith(NAME_PREFIXES):
@@ -219,8 +229,12 @@ def main():
     ap.add_argument("--scan-window", type=float, default=8.0,
                     help="seconds of radio time per interval (default 8). Set "
                          "it >= --interval to scan continuously.")
+    ap.add_argument("--name", default=None,
+                    help="bind to one sensor by a substring of its advertised "
+                         "name, e.g. 'C505'. Preferred over --address, which "
+                         "these sensors randomise.")
     ap.add_argument("--address", default=None,
-                    help="bind to one sensor's MAC, rather than any TP3x in range")
+                    help="bind to one sensor's MAC, if the name is ambiguous")
     ap.add_argument("--simulate", action="store_true",
                     help="no Bluetooth; synthesise a plausible room")
     a = ap.parse_args()
@@ -232,7 +246,7 @@ def main():
         from bleak import BleakScanner
     except ImportError:
         sys.exit("bleak not installed: pip install bleak")
-    listener = Listener(a.address)
+    listener = Listener(a.address, a.name)
     scanner = BleakScanner(detection_callback=listener.on_adv)
     asyncio.run(run(a.output, a.interval, listener, scanner, a.scan_window))
 

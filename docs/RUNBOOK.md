@@ -480,6 +480,28 @@ To run the probe alone, without any of the rest:
 python3 scripts/ble_probe_thermopro.py --seconds 90
 ```
 
+### Confirmed on 2026-10-20: the TP351S decodes
+
+Probed from Windows with the sensor on the desk. It advertises as
+`TP351S (C505)` from `FF:FF:81:1A:C5:05`, company `0x0bc2`, five-byte payload:
+
+```
+payload 0136223301  ->  26.7 C, 54 % RH, battery 100 %
+```
+
+Both decoders agree, and the arithmetic was redone by hand from the
+reassembled frame `c20b0136223301` rather than taken from either of them:
+`data[1:3]` = `0b 01` = 267 tenths = 26.7 C, `data[3]` = 54, `data[4] & 3` = 2
+= full battery. Seven bytes, above the six the library's TP3 branch requires.
+**So the TP357S layout does hold for the TP351S**, and the open question in
+this runbook is closed.
+
+**Bind by name, not by address.** `FF:FF:81:1A:C5:05` has the top bits of a
+static random address: it may survive a battery change, it may not, and
+nothing promises either way. The advertised name carries its own suffix, so
+`--name C505` identifies this unit among several without depending on an
+address that is not ours to rely on.
+
 ### What the logger guarantees
 
 Same schema as the I2C logger, `timestamp,ambient_c,humidity_pct`, appended
