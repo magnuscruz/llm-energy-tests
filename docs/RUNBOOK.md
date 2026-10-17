@@ -488,11 +488,31 @@ scripts are stdlib plus `bleak`, with nothing Linux-specific in them. So the
 decode can be confirmed at home, against the sensor on the desk, days before
 the node is touched. In PowerShell:
 
+First check there is a real Python. `py` is often absent, and the `python.exe`
+in `WindowsApps` is a two-byte Store stub that opens the Microsoft Store rather
+than running anything:
+
+```powershell
+python --version        # "Python 3.x.y" is real; opening the Store is not
+```
+
+If it is the stub, `winget` installs the real thing and puts both `py` and
+`python` on PATH:
+
+```powershell
+winget install -e --id Python.Python.3.12
+```
+
+Close and reopen PowerShell afterwards, so PATH is picked up. Then:
+
 ```powershell
 py -m pip install bleak thermopro-ble
 $repo = "\\wsl.localhost\Ubuntu-24.04\home\magnus\git\llm-energy-tests"
 py "$repo\scripts\ble_probe_thermopro.py" --seconds 90
 ```
+
+Do not reach for the Python inside LibreOffice, which is on this machine at
+3.8: it is that application's, and current `bleak` wants 3.9 or later.
 
 If PowerShell objects to the UNC path, copy the two files somewhere local
 first; they have no other dependency on the repository.
