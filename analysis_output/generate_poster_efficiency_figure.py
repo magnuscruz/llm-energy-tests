@@ -53,7 +53,7 @@ POSTER_ACCENT = "#C2552E"
 # 17 pt label lands at about 14.5 pt. The body text around it is 21.5 pt. Making
 # the figure canvas smaller is what buys that: the same labels on a 9 in canvas
 # would print at 7.7 pt, which is the size they were before this was measured.
-FIG_W, FIG_H = 5.4, 4.6
+FIG_W, FIG_H = 5.4, 4.85
 PT = dict(base=15, tick=16, axis=17, curve=17, legend=15)
 
 plt.rcParams.update({
@@ -137,14 +137,28 @@ def main():
     # Two columns, not three: three made the legend wider than the canvas and
     # it was clipped at both ends. The left margin holds a two-line y label at
     # 17 pt, which 0.165 did not.
-    fig.subplots_adjust(left=0.215, right=0.965, top=0.97, bottom=0.355)
-    fig.legend(handles=handles, loc="lower center", frameon=False, ncol=2,
-               fontsize=PT["legend"], handletextpad=0.5, columnspacing=1.6,
-               labelspacing=0.55, borderaxespad=0.5)
+    fig.subplots_adjust(left=0.215, right=0.965, top=0.97, bottom=0.435)
+    leg = fig.legend(handles=handles, loc="lower center", frameon=False, ncol=2,
+                     fontsize=PT["legend"], handletextpad=0.5,
+                     columnspacing=1.6, labelspacing=0.4, borderaxespad=0.5)
 
     # No tight_layout and no bbox_inches: the canvas must stay exactly
     # FIG_W x FIG_H, because every type size here was chosen against the
     # 116.8 mm column it is printed in.
+    # The axis label and the legend are placed by different mechanisms -- one
+    # hangs off the axes, the other off the figure -- so nothing stops them
+    # colliding, and the first attempt did. Measure the gap rather than trust
+    # the arithmetic: a negative one means they overlap.
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    xl = ax.xaxis.label.get_window_extent(renderer=r)
+    lg = leg.get_window_extent(renderer=r)
+    gap_in = (xl.y0 - lg.y1) / fig.dpi
+    print(f"  folga entre o rotulo do eixo x e a legenda: {gap_in*25.4:.1f} mm "
+          f"na tela, {gap_in*25.4*(116.8/(FIG_W*25.4)):.1f} mm impressos")
+    if gap_in <= 0:
+        raise RuntimeError("o rotulo do eixo x e a legenda sobrepoem-se")
+
     out = os.path.join(POSTER_DIR, "efficiency_vs_cap_poster.pdf")
     fig.savefig(out, facecolor="white")
     plt.close(fig)
