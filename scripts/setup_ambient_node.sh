@@ -57,7 +57,7 @@ say() { printf '%s\n' "$*"; }
 ok()  { printf '  [ok]   %s\n' "$*"; }
 bad() { printf '  [!]    %s\n' "$*"; }
 
-say "[1/5] the machine"
+say "[1/6] the machine"
 say "      repo=$REPO  user=$USER_NAME  python=$PY"
 say "      log=$LOG  interval=${INTERVAL}s  radio on ${WINDOW}s per interval"
 if [ -n "$NAME" ]; then
@@ -67,7 +67,28 @@ else
     say "      Set AMBIENT_NAME=C505 (or similar) to pin it to one."
 fi
 
-say "[2/5] bluetooth"
+say "[1b/6] nothing in flight"
+# Starting a radio scan on the machine under test in the middle of a campaign
+# perturbs the thing being measured. Refuse rather than ask.
+#
+# The bracket trick matters: a plain `pgrep -f tapo_monitor_temp.py` matches
+# its OWN command line when run over SSH, because the pattern appears there.
+# "[t]apo..." cannot match the literal string "[t]apo...", so only real
+# processes are found. This has produced a false alarm in this project twice.
+# `pgrep -c` and `grep -c` both PRINT 0 and EXIT 1 when they match nothing, so
+# `|| echo 0` appends a second value and the variable becomes "0\n0", which is
+# neither empty nor a number. Assign, then correct on failure.
+running=$(pgrep -fc "[t]apo_monitor_temp.py|[f]req_monitor_temp.sh|[r]un_benchmark_pair.sh" 2>/dev/null) || running=0
+loaded=$(ollama ps 2>/dev/null | sed 1d | grep -c .) || loaded=0
+running=${running:-0}; loaded=${loaded:-0}
+if [ "$running" -gt 0 ] || [ "$loaded" -gt 0 ]; then
+    bad "a campaign looks active ($running collector(s), $loaded model(s) resident)"
+    bad "installing a BLE scan now would perturb it. Wait for it to finish."
+    exit 1
+fi
+ok "no campaign collectors, no model resident"
+
+say "[2/6] bluetooth"
 fail=0
 if [ ! -d /sys/class/bluetooth ]; then
     bad "no /sys/class/bluetooth -- this kernel has no Bluetooth stack"; fail=1
@@ -82,7 +103,7 @@ if command -v bluetoothctl >/dev/null; then
     [ "$powered" = "yes" ] && ok "adapter powered" || { bad "adapter not powered (bluetoothctl power on)"; fail=1; }
 else bad "bluetoothctl missing (sudo apt install -y bluez)"; fail=1; fi
 
-say "[3/5] python dependencies"
+say "[3/6] python dependencies"
 for m in bleak thermopro_ble; do
     if "$PY" -c "import $m" 2>/dev/null; then ok "$m present"
     else
@@ -100,7 +121,7 @@ done
 [ "$fail" = 0 ] || { say; say "[!] fix the above first; nothing was installed"; exit 1; }
 [ "$MODE" = check ] && { say; say "[+] checks pass. Re-run without --check to probe and install."; exit 0; }
 
-say "[4/5] what the sensor actually says"
+say "[4/6] what the sensor actually says"
 say "      The sensor has no display. Compare the decoded values against"
 say "      the vendor phone app showing it -- the app is the reference,"
 say "      not either decoder."
@@ -113,7 +134,7 @@ if [ "$MODE" = ask ]; then
     case "$ans" in [yY]*) ;; *) say "[-] stopping. Send the hex above and the layout gets re-derived."; exit 0 ;; esac
 fi
 
-say "[5/5] installing the service"
+say "[5/6] installing the service"
 tmp=$(mktemp)
 sed -e "s|^User=.*|User=$USER_NAME|" \
     -e "s|^WorkingDirectory=.*|WorkingDirectory=$REPO|" \
