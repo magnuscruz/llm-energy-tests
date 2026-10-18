@@ -34,7 +34,7 @@
 # Usage:
 #   ./scripts/run_ocr_campaign.sh --hours 4          # 12 cells, 48 h total
 #   ./scripts/run_ocr_campaign.sh --hours 4 --dry-run
-#   ./scripts/run_ocr_campaign.sh --hours 0.05 --cells 2   # smoke test
+#   ./scripts/run_ocr_campaign.sh --hours 0.05 --cells 2 --tag smoke
 set -euo pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -65,6 +65,9 @@ WARMUP_S=${OCR_WARMUP_S:-120}
 AMBIENT_LOG=${AMBIENT_LOG:-$HOME/ambient_ble.csv}
 AMBIENT_MAX_AGE=${OCR_AMBIENT_MAX_AGE:-300}
 NO_AMBIENT=0
+# Distinguishes a smoke test from the real campaign on the same day, so the
+# two never share a directory and renumber each other's cells.
+TAG=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -72,6 +75,7 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY=1; shift ;;
     --cells) LIMIT_CELLS=$2; shift 2 ;;
     --no-ambient) NO_AMBIENT=1; shift ;;
+    --tag) TAG="_$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -95,7 +99,7 @@ PY=${OCR_PYTHON:-$PROJECT_ROOT/venv/bin/python3}
 [ -x "$PY" ] || PY=$(command -v python3)
 
 STAMP=$(date +%Y-%m-%d)
-CAMPAIGN="$PROJECT_ROOT/logs/${STAMP}_ocr_boundary"
+CAMPAIGN="$PROJECT_ROOT/logs/${STAMP}_ocr_boundary${TAG}"
 SAFE_MODEL=${MODEL//:/_}
 HOURS_TAG=$(awk -v h="$HOURS" 'BEGIN{printf "%.2f", h}')
 DURATION_S=$(awk -v h="$HOURS" 'BEGIN{printf "%d", h*3600}')
