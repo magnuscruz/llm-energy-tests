@@ -1,18 +1,33 @@
 import glob
 import os
+import re
+import sys
 
 import pandas as pd
 
-# Array of model names for which you want to perform the analysis
-model_names = ['llama3.1_8b', 'deepseek-v2_lite', 'qwen2.5_0.5b', 'phi3_mini']
+# The model set and the duration token used to be written here as
+# ['llama3.1_8b', ...] and '48.00h'. Both are properties of the directory, not
+# of the fusion: the OCR boundary campaign runs one vision model in 4 h cells,
+# and no campaign has ever actually been 48.00 h -- that string is the target
+# the orchestrator was asked for, not what completed. So discover both from
+# the files that are present.
+STEM = re.compile(r'^(?P<model>.+)_(?P<dur>[0-9.]+h)_inference\.csv$')
+runs = []
+for path in sorted(glob.glob('*_inference.csv')):
+    m = STEM.match(os.path.basename(path))
+    if m:
+        runs.append((m.group('model'), m.group('dur')))
+if not runs:
+    sys.exit("no *_inference.csv here. build_data_analysis.py uses paths "
+             "relative to the working directory: cd into the campaign's "
+             "deep_aging/ (or a cell's) folder first.")
 
-# Iterate over each model name
-for model_name in model_names:
-    # Your analysis code here
-    print(f"Processing model: {model_name}")
+for model_name, dur in runs:
+    prefix = f'{model_name}_{dur}'
+    print(f"Processing model: {model_name} ({dur})")
     # 1. Load the datasets
-    df_inf = pd.read_csv(f'{model_name}_48.00h_inference.csv')
-    df_phys = pd.read_csv(f'{model_name}_48.00h_physical.csv')
+    df_inf = pd.read_csv(f'{prefix}_inference.csv')
+    df_phys = pd.read_csv(f'{prefix}_physical.csv')
 
     # Ensure timestamps are sorted for accurate temporal merging
     df_inf = df_inf.sort_values('timestamp').reset_index(drop=True)
@@ -152,7 +167,7 @@ for model_name in model_names:
     merged_df['response_time_s'] = (merged_df['prefill_dur_s'] + merged_df['decode_dur_s'])
 
     # 6. Export the finalized dataset
-    merged_df.to_csv(f'{model_name}_48.00h_merged_analysis.csv', index=False)
+    merged_df.to_csv(f'{prefix}_merged_analysis.csv', index=False)
 
     # Preview the calculated columns
     print(merged_df[['timestamp', 'decode_tps', 'watts_mean', 'scaling_cur_freq', 'freq_khz_max_mean', 'freq_khz_mean_mean', 'tokens_per_joule', 'eco_efficiency_ce', 'response_time_s', 'prefill_dur_s', 'decode_dur_s']].head())
