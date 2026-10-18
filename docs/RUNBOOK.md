@@ -200,6 +200,27 @@ models.
 
 ---
 
+### Do not pip in the node's venv
+
+`~/git/llm-energy-tests/venv` on the node holds **both** `tapo`, which the
+power logger imports, and `pandas`. An upgrade was interrupted at some point
+and left two dist-info directories for each of `numpy`, `pandas` and `tapo`,
+so `import pandas` now fails outright:
+
+    ImportError: Can't determine version for pytz
+
+The temptation is to repair it before a campaign. Do not. `tapo` currently
+imports and logs power correctly, and any `pip install` in that venv operates
+on the same site-packages: a reinstall can resolve `tapo` to a different
+version and the first sign of it would be a `*_physical.csv` containing only
+a header, 48 hours later. The smoke test is what proves the venv works, and
+the state it proved is the state to leave alone.
+
+Run the analysis on the laptop instead. `build_data_analysis.py` needs only
+the CSVs, which `scp` copies in seconds, and the laptop's `.venv` is clean.
+Repair the node's venv between campaigns, never before one, and re-run a
+two-cell smoke test afterwards to confirm the power logger still works.
+
 ## 4. Run
 
 ```bash
