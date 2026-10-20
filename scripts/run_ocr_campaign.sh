@@ -54,6 +54,16 @@ LIMIT_CELLS=0
 OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
 REQ_TIMEOUT=${OCR_REQ_TIMEOUT:-1800}
 MAX_TIMEOUT_PCT=${OCR_MAX_TIMEOUT_PCT:-5}
+# Decode ceiling (Ollama num_predict), applied identically to both regimes.
+# Without it, a page that drives the model into a repetition loop never ends:
+# in 2026-10-18_ocr_boundary, runbook-2.png did so on every attempt in every
+# image cell, R1 included, and each attempt burned the full REQ_TIMEOUT --
+# roughly 85-90% of every image cell's wall time. Decoding is deterministic
+# here (each page yields the same token count every time), so this is not a
+# slow tail but a loop. Legitimate output in that campaign peaked at 198
+# tokens (image) and 663 (text), so 1024 truncates only runaways. A row that
+# hits the ceiling is kept and marked truncated=1, never dropped.
+NUM_PREDICT=${OCR_NUM_PREDICT:-1024}
 # Pilot 2 measured 3713 prompt tokens with an image, 95 without. Anything near
 # the lower figure means the image was dropped, not that the page was sparse.
 MIN_IMAGE_PREFILL=${OCR_MIN_IMAGE_PREFILL:-1000}
@@ -123,6 +133,7 @@ say "corpus   : $CORPUS (${#IMAGES[@]} pages)"
 say "cells    : ${#CELLS[@]} x ${HOURS}h  = $(awk -v n=${#CELLS[@]} -v h="$HOURS" 'BEGIN{printf "%.1f", n*h}')h"
 say "order    : ${CELLS[*]//|/ }"
 say "timeout  : ${REQ_TIMEOUT}s per request; a cell over ${MAX_TIMEOUT_PCT}% timeouts is flagged"
+say "decode   : num_predict=${NUM_PREDICT} (rows hitting it are marked truncated=1)"
 # Checked before the campaign starts, not discovered 48 h later: a dead
 # sensor costs the whole ambient covariate, and the main study already has
 # campaigns with no ambient record at all.
@@ -169,6 +180,7 @@ record_config() {   # $1 = cell dir, $2 = cap label
         echo "scaling_max_freq_ecore=$(cat /sys/devices/system/cpu/cpu12/cpufreq/scaling_max_freq 2>/dev/null || echo n/a)"
         echo "corpus=$CORPUS"
         echo "req_timeout_s=$REQ_TIMEOUT"
+        echo "num_predict=$NUM_PREDICT"
     } > "$1/run_config.log"
 }
 
@@ -242,11 +254,11 @@ one_request() {   # $1 = regime, $2 = image path (may be empty), $3 = log file
             echo "cannot encode page $img" > "$WORK/fatal"
             echo fatal; return
         fi
-        jq -n --arg m "$MODEL" --arg p "$PROMPT_IMAGE" --arg b "$b64" \
-           '{model:$m, prompt:$p, stream:false, images:[$b]}' > "$WORK/payload.json"
+        jq -n --arg m "$MODEL" --arg p "$PROMPT_IMAGE" --arg b "$b64" --argjson np "$NUM_PREDICT" \
+           '{model:$m, prompt:$p, stream:false, images:[$b], options:{num_predict:$np}}' > "$WORK/payload.json"
     else
-        jq -n --arg m "$MODEL" --arg p "$PROMPT_TEXT" \
-           '{model:$m, prompt:$p, stream:false}' > "$WORK/payload.json"
+        jq -n --arg m "$MODEL" --arg p "$PROMPT_TEXT" --argjson np "$NUM_PREDICT" \
+           '{model:$m, prompt:$p, stream:false, options:{num_predict:$np}}' > "$WORK/payload.json"
     fi
 
     t0=$(date +%s)
@@ -256,12 +268,14 @@ one_request() {   # $1 = regime, $2 = image path (may be empty), $3 = log file
         # A row is still written. Dropping the slow events is precisely the
         # bias this campaign has to avoid: they cluster at the low caps.
         t1=$(date +%s)
-        echo "$t0,$MODEL,$regime,$(basename "${img:-none}"),$cpu_temp,$ram_used,$cur_freq,0,0,0,0,0,0,$((t1-t0)),1" >> "$log"
+        echo "$t0,$MODEL,$regime,$(basename "${img:-none}"),$cpu_temp,$ram_used,$cur_freq,0,0,0,0,0,0,$((t1-t0)),1,0" >> "$log"
         echo timeout; return
     fi
     t1=$(date +%s)
 
-    local pf_tok pf_ns de_tok de_ns
+    local pf_tok pf_ns de_tok de_ns trunc
+    # done_reason is "length" when num_predict cut the decode short.
+    trunc=$(jq -r 'if .done_reason == "length" then 1 else 0 end' "$WORK/resp.json")
     pf_tok=$(jq -r '.prompt_eval_count // 0' "$WORK/resp.json")
     pf_ns=$(jq -r '.prompt_eval_duration // 1' "$WORK/resp.json")
     de_tok=$(jq -r '.eval_count // 0' "$WORK/resp.json")
@@ -275,7 +289,8 @@ one_request() {   # $1 = regime, $2 = image path (may be empty), $3 = log file
     pf_s=$(echo "scale=6; $pf_ns / 1000000000" | bc)
     de_s=$(echo "scale=6; $de_ns / 1000000000" | bc)
 
-    echo "$t0,$MODEL,$regime,$(basename "${img:-none}"),$cpu_temp,$ram_used,$cur_freq,$pf_tps,$de_tps,$pf_s,$de_s,$pf_tok,$de_tok,$((t1-t0)),0" >> "$log"
+    echo "$t0,$MODEL,$regime,$(basename "${img:-none}"),$cpu_temp,$ram_used,$cur_freq,$pf_tps,$de_tps,$pf_s,$de_s,$pf_tok,$de_tok,$((t1-t0)),0,$trunc" >> "$log"
+    [ "$trunc" = 1 ] && { echo truncated; return; }
     echo ok
 }
 
@@ -323,7 +338,7 @@ run_cell() {   # $1 = index, $2 = cap label, $3 = regime
     record_config "$CAMPAIGN/$name" "$cap"
 
     local log="$dir/${SAFE_MODEL}_${HOURS_TAG}h_inference.csv"
-    echo "timestamp,model,regime,page,cpu_temp,ram_used_mb,scaling_cur_freq,prefill_tps,decode_tps,prefill_dur_s,decode_dur_s,prefill_tokens,decode_tokens,wall_s,timed_out" > "$log"
+    echo "timestamp,model,regime,page,cpu_temp,ram_used_mb,scaling_cur_freq,prefill_tps,decode_tps,prefill_dur_s,decode_dur_s,prefill_tokens,decode_tokens,wall_s,timed_out,truncated" > "$log"
 
     # Short warm-up, discarded. The model stays resident across cells, so the
     # 600 s residency ramp of the main study is paid once, not twelve times;
@@ -355,7 +370,7 @@ run_cell() {   # $1 = index, $2 = cap label, $3 = regime
     "$WORK/freq_monitor_temp.sh" > "$dir/${SAFE_MODEL}_${HOURS_TAG}h_freq.csv" 2>/dev/null &
     local freq_pid=$!
 
-    local end=$(( $(date +%s) + DURATION_S )) n=0 nto=0 r
+    local end=$(( $(date +%s) + DURATION_S )) n=0 nto=0 ntr=0 r
     i=0
     while [ "$(date +%s)" -lt "$end" ]; do
         r=$(one_request "$regime" "${IMAGES[$(( i % ${#IMAGES[@]} ))]}" "$log")
@@ -365,6 +380,7 @@ run_cell() {   # $1 = index, $2 = cap label, $3 = regime
         fi
         n=$(( n + 1 )); i=$(( i + 1 ))
         [ "$r" = timeout ] && nto=$(( nto + 1 ))
+        [ "$r" = truncated ] && ntr=$(( ntr + 1 ))
     done
 
     kill "$tapo_pid" "$freq_pid" 2>/dev/null || true
@@ -388,10 +404,11 @@ run_cell() {   # $1 = index, $2 = cap label, $3 = regime
     [ "$n" -gt 0 ] && pct=$(awk -v a="$nto" -v b="$n" 'BEGIN{printf "%.1f", 100*a/b}')
     local flag=""
     awk -v p="$pct" -v m="$MAX_TIMEOUT_PCT" 'BEGIN{exit !(p>m)}' && flag=" **COMPROMISED**"
-    say "    $n events, $nto timed out (${pct}%)$flag"
-    printf '| %s | %s | %s | %d | %d | %s%% |%s\n' \
-        "$idx" "$cap" "$regime" "$n" "$nto" "$pct" "$flag" >> "$CAMPAIGN/_cells.md"
+    say "    $n events, $nto timed out (${pct}%), $ntr truncated at ${NUM_PREDICT} tokens$flag"
+    printf '| %s | %s | %s | %d | %d | %s%% | %d |%s\n' \
+        "$idx" "$cap" "$regime" "$n" "$nto" "$pct" "$ntr" "$flag" >> "$CAMPAIGN/_cells.md"
     {   echo "events=$n"; echo "timeouts=$nto"; echo "timeout_pct=$pct"
+        echo "truncated=$ntr"
         echo "ambient_rows=$amb_rows"
         echo "finished=$(date -Is)"
     } >> "$CAMPAIGN/$name/run_config.log"
@@ -421,6 +438,8 @@ sudo cpupower frequency-set -u $((BASE_FREQ_KHZ*2))kHz >/dev/null 2>&1 || true
     echo "- cells: ${#CELLS[@]} = caps x regimes, **randomised**, ${HOURS} h each"
     echo "- order as executed: \`${CELLS[*]//|/ }\`"
     echo "- request timeout: ${REQ_TIMEOUT} s"
+    echo "- decode ceiling: num_predict=${NUM_PREDICT} tokens, both regimes; rows"
+    echo "  that reach it carry \`truncated=1\` and are kept"
     echo "- ambient: ThermoPro TP351S over BLE, sliced per cell into"
     echo "  \`<cell>/deep_aging/ambient_ble.csv\` (\`ambient_rows\` in each"
     echo "  \`run_config.log\`)"
@@ -434,8 +453,8 @@ sudo cpupower frequency-set -u $((BASE_FREQ_KHZ*2))kHz >/dev/null 2>&1 || true
     echo "counted here. A cell above ${MAX_TIMEOUT_PCT}% is marked and must not be"
     echo "read as a clean measurement."
     echo
-    echo "| # | cap | regime | events | timeouts | rate |"
-    echo "|---|-----|--------|--------|----------|------|"
+    echo "| # | cap | regime | events | timeouts | rate | truncated |"
+    echo "|---|-----|--------|--------|----------|------|-----------|"
     cat "$CAMPAIGN/_cells.md"
     echo
     echo "Per-cell \`run_config.log\` carries kernel, Ollama version, model digest,"
