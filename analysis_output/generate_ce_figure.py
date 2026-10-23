@@ -42,7 +42,7 @@ TARGET = dict(
     out=os.path.join(GIT, "paper1-iotj", "fig", "ce_metric.pdf"),
     printed_mm=88.9, w=5.4, h=4.6,
     pt=dict(base=11, tick=11.5, axis=12.5, legend=9.5, note=9.5),
-    adjust=dict(left=0.19, right=0.965, top=0.97, bottom=0.28),
+    adjust=dict(left=0.17, right=0.90, top=0.97, bottom=0.28),
 )
 
 
@@ -157,7 +157,7 @@ def main():
     ax.set_xticklabels([f"{int(CI_LO)}\nclean", f"{int(CI_REF)}\nmixed", f"{int(CI_HI)}\ncoal-heavy"])
     ax.tick_params(axis="both", labelsize=PT["tick"])
     ax.set_xlabel("Grid carbon intensity (gCO$_2$eq/kWh)", fontsize=PT["axis"], labelpad=6)
-    ax.set_ylabel("$CE$ (tokens per gCO$_2$eq)", fontsize=PT["axis"], labelpad=5)
+    ax.set_ylabel(r"$\mathrm{CAETOM}$ (tokens per gCO$_2$eq)", fontsize=PT["axis"], labelpad=5)
     ax.grid(True, axis="y", which="major", linewidth=0.6, alpha=0.7)
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
@@ -170,7 +170,8 @@ def main():
     desired_gap_mm = 2.0
     gap_fig = (desired_gap_mm / 25.4 / scale) / t["h"]
 
-    leg = fig.legend(loc="upper center", bbox_to_anchor=(0.58, xl_y0_fig - gap_fig),
+    ax_center = (t["adjust"]["left"] + t["adjust"]["right"]) / 2
+    leg = fig.legend(loc="upper center", bbox_to_anchor=(ax_center, xl_y0_fig - gap_fig),
                      frameon=False, ncol=2, fontsize=PT["legend"],
                      handletextpad=0.5, columnspacing=1.0, labelspacing=0.35, borderaxespad=0.2)
 
