@@ -27,6 +27,10 @@ echo "=== 1. ACTIVE PROCESSES & DISK HEADROOM ==="
 running=$(pgrep -fc "[t]apo_monitor|[f]req_monitor|[r]un_benchmark_pair|[p]rofile_" 2>/dev/null) || running=0
 echo "Active benchmark/collector processes: $running"
 df -h /home/ubuntu/git/llm-energy-tests/logs 2>/dev/null || df -h /
+if [ -f /home/ubuntu/git/llm-energy-tests/rejuvenation_profile.log ]; then
+    echo "--- LIVE REJUVENATION PROFILE LOG (last 25 lines) ---"
+    tail -n 25 /home/ubuntu/git/llm-energy-tests/rejuvenation_profile.log
+fi
 
 echo ""
 echo "=== 2. CPU TEMPERATURE (lm-sensors) ==="
