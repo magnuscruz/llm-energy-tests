@@ -10,3 +10,11 @@ analysis_output/combined_dataset.csv
 
 # ensaios locais do logger ambiente
 sample.csv
+
+# Confidential & Unpublished Research Material (Papers 2, 3, 4 & PhD Reports)
+reports/
+scripts/*paper3*
+scripts/*pilot*
+scripts/*rejuvenation*
+logs/rejuvenation_cost_*/
+logs/paper3_pilot_*/
