@@ -38,9 +38,9 @@ POSTER_SLATE = "#41566B"
 TARGET = dict(
     name="paper",
     out=os.path.join(GIT, "paper1-iotj", "fig", "cap_adherence.pdf"),
-    printed_mm=88.9, w=5.4, h=4.6, ncol=2,
+    printed_mm=88.9, w=5.4, h=4.8, ncol=2,
     pt=dict(base=11, tick=11.5, axis=12.5, legend=9.5),
-    adjust=dict(left=0.185, right=0.965, top=0.97, bottom=0.27),
+    adjust=dict(left=0.185, right=0.965, top=0.97, bottom=0.33),
 )
 
 
@@ -179,10 +179,10 @@ def render(t):
         raise RuntimeError("x label and legend overlap")
 
     os.makedirs(os.path.dirname(t["out"]), exist_ok=True)
-    fig.savefig(t["out"], facecolor="white")
+    fig.savefig(t["out"], facecolor="white", bbox_inches="tight")
     # Also save a png copy alongside
     png_out = os.path.splitext(t["out"])[0] + ".png"
-    fig.savefig(png_out, dpi=200, facecolor="white")
+    fig.savefig(png_out, dpi=200, facecolor="white", bbox_inches="tight")
     plt.close(fig)
     print(f"\n  {t['printed_mm']:.1f} mm wide, canvas {t['w']}x{t['h']} in -> "
           f"scale {scale:.2f}, {PT['axis']} pt label prints at "

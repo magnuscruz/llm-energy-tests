@@ -45,7 +45,7 @@ plt.rcParams.update({
 
 
 def prefill_mean(directory, model_key):
-    df = pd.read_csv(f"{directory}/{model_key}_48.00h_merged_analysis.csv", low_memory=False)
+    df = pd.read_csv(f"{directory}/{model_key}_48.00h_merged_analysis.csv", usecols=["prefill_tps"])
     return df["prefill_tps"].dropna().iloc[1:].mean()
 
 
