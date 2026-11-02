@@ -3,6 +3,7 @@ __pycache__/
 .streamlit/
 venv/
 .venv/
+.cienciavitae_profile/
 .env
 
 # Build artifact; the .gz form is tracked instead (GitHub 100 MB blob limit)
@@ -15,6 +16,7 @@ sample.csv
 reports/
 scripts/*paper3*
 scripts/*pilot*
+scripts/*ciencia*
 scripts/*rejuvenation*
 logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
