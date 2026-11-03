@@ -6,6 +6,7 @@ venv/
 .cienciavitae_profile/
 .env
 
+
 # Build artifact; the .gz form is tracked instead (GitHub 100 MB blob limit)
 analysis_output/combined_dataset.csv
 
@@ -20,3 +21,4 @@ scripts/*ciencia*
 scripts/*rejuvenation*
 logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
+logs/paper3_experiment_*/
