@@ -22,4 +22,6 @@ scripts/*rejuvenation*
 logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
 logs/paper3_experiment_*/
+logs/paper3_test_*/
+scripts/*queue*
 build/generated-spring-modulith/javadoc.json
