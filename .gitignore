@@ -27,3 +27,4 @@ logs/paper3_test_*/
 logs/paper4_*/
 scripts/*queue*
 build/generated-spring-modulith/javadoc.json
+build/generated-spring-modulith/javadoc.json
