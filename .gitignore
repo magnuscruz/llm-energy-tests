@@ -16,6 +16,7 @@ sample.csv
 # Confidential & Unpublished Research Material (Papers 2, 3, 4 & PhD Reports)
 reports/
 scripts/*paper3*
+scripts/*paper4*
 scripts/*pilot*
 scripts/*ciencia*
 scripts/*rejuvenation*
@@ -23,5 +24,6 @@ logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
 logs/paper3_experiment_*/
 logs/paper3_test_*/
+logs/paper4_*/
 scripts/*queue*
 build/generated-spring-modulith/javadoc.json
