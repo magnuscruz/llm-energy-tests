@@ -31,7 +31,7 @@ logs/paper3_pilot_*/
 logs/paper3_experiment_*/
 logs/paper3_test_*/
 logs/paper4_*/
-logs/paper5_*/
+logs/paper5_*
 logs/exp_concurrency_aging_*/
 logs/exp_semantic_drift_*/
 logs/triad_suite_*.log
