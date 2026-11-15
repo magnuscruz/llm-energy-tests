@@ -13,18 +13,25 @@ analysis_output/combined_dataset.csv
 # ensaios locais do logger ambiente
 sample.csv
 
-# Confidential & Unpublished Research Material (Papers 2, 3, 4 & PhD Reports)
+# Confidential & Unpublished Research Material (Papers 2, 3, 4, 5 & PhD Reports)
 reports/
+scratch/
 scripts/*paper3*
 scripts/*paper4*
+scripts/*paper5*
 scripts/*pilot*
 scripts/*ciencia*
 scripts/*rejuvenation*
+scripts/*queue*
+scripts/run_concurrency_aging_experiment.sh
+scripts/run_semantic_drift_experiment.sh
+scripts/run_triad_experimental_suite.sh
 logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
 logs/paper3_experiment_*/
 logs/paper3_test_*/
 logs/paper4_*/
-scripts/*queue*
-build/generated-spring-modulith/javadoc.json
+logs/exp_concurrency_aging_*/
+logs/exp_semantic_drift_*/
+logs/triad_suite_*.log
 build/generated-spring-modulith/javadoc.json
