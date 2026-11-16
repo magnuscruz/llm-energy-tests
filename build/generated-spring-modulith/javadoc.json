@@ -1,1 +1,1 @@
-[{"name":"org.ecosar.starter.EcoSarApplication","comment":"EcoSAR Edge Gateway Starter Application. <p> Autonomous Software Aging and Carbon-Aware Rejuvenation Framework for Edge Foundation Models. Optimized for GraalVM Native Image compilation and Java 21\/25 Virtual Threads."}]
+[{"name":"org.ecosar.starter.web.RejuvenationApiController","comment":"Controller for triggering and monitoring layered rejuvenation actions."}]
