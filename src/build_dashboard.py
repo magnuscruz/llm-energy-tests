@@ -219,7 +219,7 @@ with col2:
     st.plotly_chart(fig_tps, use_container_width=True)
 
 st.markdown("---")
-st.subheader("4. Carbon-Aware Eco-Efficiency Metric (CAE2M)")
+st.subheader("4. Carbon-Aware Eco-Efficiency Metric (CAETOM)")
 st.markdown("The global sustainability benchmark mapping hardware power draw against grid intensity (`eco_efficiency_ce`). Assesses Tokens/gCO₂eq.")
 fig_ce = px.line(df_filtered, x="Time (Hours)", y="eco_efficiency_ce", color=color_column, 
                  labels={"eco_efficiency_ce": "Carbon Eco-Efficiency (CE)"}, template="plotly_white")

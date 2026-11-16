@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The CAE2M figure: intra-model gains, design space, and grid siting comparison.
+"""The CAETOM figure: intra-model gains, design space, and grid siting comparison.
 
 CE = T_J x 3.6e6 / CI_grid, in tokens per gram of CO2eq.
 
