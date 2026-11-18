@@ -26,12 +26,14 @@ scripts/*queue*
 scripts/run_concurrency_aging_experiment.sh
 scripts/run_semantic_drift_experiment.sh
 scripts/run_triad_experimental_suite.sh
+scripts/*sware*
 logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
 logs/paper3_experiment_*/
 logs/paper3_test_*/
 logs/paper4_*/
 logs/paper5_*
+logs/sware_*/
 logs/exp_concurrency_aging_*/
 logs/exp_semantic_drift_*/
 logs/triad_suite_*.log
