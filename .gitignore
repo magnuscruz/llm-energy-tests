@@ -27,6 +27,8 @@ scripts/run_concurrency_aging_experiment.sh
 scripts/run_semantic_drift_experiment.sh
 scripts/run_triad_experimental_suite.sh
 scripts/*sware*
+scripts/run_allocator_paired_check.sh
+scripts/run_tps_turbostat_check.sh
 logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
 logs/paper3_experiment_*/
@@ -37,4 +39,7 @@ logs/sware_*/
 logs/exp_concurrency_aging_*/
 logs/exp_semantic_drift_*/
 logs/triad_suite_*.log
+logs/microexp_backoff_*/
+logs/allocator_paired_*/
+logs/tps_turbostat_*/
 build/generated-spring-modulith/javadoc.json
