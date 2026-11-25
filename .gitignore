@@ -29,6 +29,10 @@ scripts/run_triad_experimental_suite.sh
 scripts/*sware*
 scripts/run_allocator_paired_check.sh
 scripts/run_tps_turbostat_check.sh
+scripts/run_serve_gctrace_check.sh
+scripts/run_concurrency_backoff_check.sh
+scripts/run_ollama_latest_probe.sh
+scripts/run_docker_memlimit_patch_check.sh
 logs/rejuvenation_cost_*/
 logs/paper3_pilot_*/
 logs/paper3_experiment_*/
@@ -42,4 +46,8 @@ logs/triad_suite_*.log
 logs/microexp_backoff_*/
 logs/allocator_paired_*/
 logs/tps_turbostat_*/
+logs/serve_gctrace_*/
+logs/concurrency_backoff_*/
+logs/ollama_latest_probe_*/
+logs/docker_memlimit_patch_*/
 build/generated-spring-modulith/javadoc.json
